@@ -1,19 +1,44 @@
-package org.weviewapp.Entity;
+package org.weviewapp.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
+@Data
+@Table(name="users")
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
 
 public class User {
         @Id
-        private @Getter @Setter UUID userId;
-        private @Getter @Setter String userEmail;
-        private @Getter @Setter String userPassword;
+        @Column(name="user_id")
+        private @Getter @Setter UUID id;
+
+        @Column(name="user_email")
+        private @Getter @Setter String email;
+
+        @Column(name="user_username")
+        private @Getter @Setter String username;
+
+        @Column(name="user_password")
+        private @Getter @Setter String password;
+
+//        @ElementCollection(fetch= FetchType.EAGER)
+//        @CollectionTable(
+//                name="roles",
+//                joinColumns = @JoinColumn(name="user_id")
+//        )
+//
+//        @Column(name="user_role")
+//        private List<String> roles;
+
+        @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+        @JoinTable(name = "user_roles",
+                joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "user_id"),
+                inverseJoinColumns = @JoinColumn(name = "role_id", referencedColumnName = "id"))
+        private Set<Role> roles;
 }

@@ -1,11 +1,12 @@
-package org.weviewapp.Controller;
+package org.weviewapp.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.weviewapp.Entity.User;
-import org.weviewapp.Repository.UserRepository;
+import org.weviewapp.entity.User;
+import org.weviewapp.repository.UserRepository;
 
 @RestController
+@RequestMapping("/api")
 public class UserController {
     @Autowired
     private UserRepository userRepository;
@@ -16,7 +17,7 @@ public class UserController {
         // @RequestParam means it is a parameter from the GET or POST request
 
         User n = new User();
-        n.setUserEmail(email);
+        n.setEmail(email);
         userRepository.save(n);
         return "Saved";
     }
