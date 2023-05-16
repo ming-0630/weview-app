@@ -7,6 +7,7 @@ public class WeviewAPIException extends RuntimeException {
     private final String message;
 
     public WeviewAPIException(HttpStatus status, String message) {
+        super(message);
         this.status = status;
         this.message = message;
     }

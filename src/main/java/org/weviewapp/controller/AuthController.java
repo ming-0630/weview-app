@@ -38,22 +38,21 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<JWTAuthResponse> login(@RequestBody LoginDto loginDto){
-        String token = authService.login(loginDto);
+            String token = authService.login(loginDto);
+            JWTAuthResponse jwtAuthResponse = new JWTAuthResponse();
+            jwtAuthResponse.setAccessToken(token);
 
-        JWTAuthResponse jwtAuthResponse = new JWTAuthResponse();
-        jwtAuthResponse.setAccessToken(token);
+            String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+            Optional<User> loggedInUser = userRepository.findByEmail(userEmail);
 
-        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        Optional<User> loggedInUser = userRepository.findByEmail(userEmail);
-
-        if (loggedInUser.isPresent()) {
-            jwtAuthResponse.setUser(loggedInUser.get());
-            String refreshToken = refreshTokenService.createRefreshToken(loggedInUser.get().getId()).getToken();
-            jwtAuthResponse.setRefreshToken(refreshToken);
-        }
-
+            if (loggedInUser.isPresent()) {
+                jwtAuthResponse.setUser(loggedInUser.get());
+                String refreshToken = refreshTokenService.createRefreshToken(loggedInUser.get().getId()).getToken();
+                jwtAuthResponse.setRefreshToken(refreshToken);
+            }
         return ResponseEntity.ok(jwtAuthResponse);
     }
+
     @PostMapping("/refreshtoken")
     public ResponseEntity<?> refreshtoken(@RequestBody JWTRefreshRequest request) {
         String requestRefreshToken = request.getRefreshToken();
@@ -65,8 +64,7 @@ public class AuthController {
                     String token = tokenProvider.generateToken(user.getUsername());
                     return ResponseEntity.ok(new JWTRefreshResponse(token, requestRefreshToken));
                 })
-                .orElseThrow(() -> new RefreshTokenException(requestRefreshToken,
-                        "Refresh token is not in database!"));
+                .orElseThrow(() -> new RefreshTokenException("Refresh token is not in database!"));
     }
 
 //    @PostMapping("/signup")

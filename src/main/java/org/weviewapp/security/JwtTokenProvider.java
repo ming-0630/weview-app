@@ -57,7 +57,6 @@ public class JwtTokenProvider {
 
     // validate Jwt token
     public boolean validateToken(String token){
-        System.out.println("Validating");
         try{
             Jwts.parserBuilder()
                     .setSigningKey(key())
