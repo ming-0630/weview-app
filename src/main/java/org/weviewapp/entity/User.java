@@ -27,14 +27,8 @@ public class User {
         @Column(name="user_password")
         private @Getter @Setter String password;
 
-//        @ElementCollection(fetch= FetchType.EAGER)
-//        @CollectionTable(
-//                name="roles",
-//                joinColumns = @JoinColumn(name="user_id")
-//        )
-//
-//        @Column(name="user_role")
-//        private List<String> roles;
+        @Column(name="user_image_dir")
+        private @Getter @Setter String profileImageDirectory;
 
         @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
         @JoinTable(name = "user_roles",
