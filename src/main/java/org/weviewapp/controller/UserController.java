@@ -11,7 +11,6 @@ import javax.activation.FileTypeMap;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,7 +22,6 @@ public class UserController {
     private UserRepository userRepository;
     @GetMapping("/getProfilePic")
     public ResponseEntity<byte[]> getImage(@RequestParam UUID id) throws MalformedURLException {
-//        byte[] image = new byte[0];
         Optional<User> user = userRepository.findById(id);
 
         String projectRoot = System.getProperty("user.dir");
@@ -33,11 +31,10 @@ public class UserController {
             try {
 //                image = FileUtils.readFileToByteArray(new File(FILE_PATH_ROOT+user.get().getProfileImageDirectory()));
                 File img = new File(imagesFolderPath + user.get().getProfileImageDirectory());
-                byte[] test = Files.readAllBytes(img.toPath());
-                System.out.println(Arrays.toString(test));
+                byte[] bytes = Files.readAllBytes(img.toPath());
                 return ResponseEntity.ok().contentType(
                         MediaType.valueOf(FileTypeMap.getDefaultFileTypeMap().getContentType(img))
-                ).body(test);
+                ).body(bytes);
             } catch (Exception e) {
                 e.printStackTrace();
             }

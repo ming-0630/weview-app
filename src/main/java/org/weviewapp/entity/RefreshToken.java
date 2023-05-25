@@ -5,7 +5,7 @@ import lombok.Data;
 
 import java.time.Instant;
 
-@Entity(name = "refreshtoken")
+@Entity(name = "refresh_token")
 @Data
 public class RefreshToken {
     @Id

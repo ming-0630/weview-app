@@ -7,8 +7,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.weviewapp.dto.LoginDto;
-import org.weviewapp.dto.RegisterDto;
+import org.weviewapp.dto.LoginDTO;
+import org.weviewapp.dto.RegisterDTO;
 import org.weviewapp.repository.RoleRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.security.JwtTokenProvider;
@@ -27,7 +27,7 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
     @Override
-    public String login(LoginDto loginDto) {
+    public String login(LoginDTO loginDto) {
         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                 loginDto.getEmail(), loginDto.getPassword()));
 
@@ -39,7 +39,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String register(RegisterDto registerDto) {
+    public String register(RegisterDTO registerDto) {
 
 //        // add check for username exists in database
 //        if(userRepository.existsByUsername(registerDto.getUsername())){

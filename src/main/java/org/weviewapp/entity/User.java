@@ -18,16 +18,16 @@ public class User {
         @Column(name="user_id")
         private @Getter @Setter UUID id;
 
-        @Column(name="user_email")
+        @Column(name="email")
         private @Getter @Setter String email;
 
-        @Column(name="user_username")
+        @Column(name="username")
         private @Getter @Setter String username;
 
-        @Column(name="user_password")
+        @Column(name="password")
         private @Getter @Setter String password;
 
-        @Column(name="user_image_dir")
+        @Column(name="image_dir")
         private @Getter @Setter String profileImageDirectory;
 
         @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)

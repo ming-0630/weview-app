@@ -11,6 +11,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.*;
 import org.weviewapp.dto.*;
+import org.weviewapp.dto.JWTRefreshRequest;
+import org.weviewapp.dto.LoginDTO;
+import org.weviewapp.dto.RegisterDTO;
 import org.weviewapp.entity.RefreshToken;
 import org.weviewapp.entity.Role;
 import org.weviewapp.entity.User;
@@ -43,7 +46,7 @@ public class AuthController {
     private RoleRepository roleRepository;
 
     @PostMapping("/login")
-    public ResponseEntity<JWTAuthResponse> login(@RequestBody LoginDto loginDto){
+    public ResponseEntity<JWTAuthResponse> login(@RequestBody LoginDTO loginDto){
             String token = authService.login(loginDto);
             JWTAuthResponse jwtAuthResponse = new JWTAuthResponse();
             jwtAuthResponse.setAccessToken(token);
@@ -74,7 +77,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody RegisterDto registerDto){
+    public ResponseEntity<?> registerUser(@RequestBody RegisterDTO registerDto){
         System.out.println(registerDto);
 
         // add check for username exists in a DB

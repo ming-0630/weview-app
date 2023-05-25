@@ -1,10 +1,10 @@
 package org.weviewapp.service;
 
-import org.weviewapp.dto.LoginDto;
-import org.weviewapp.dto.RegisterDto;
+import org.weviewapp.dto.LoginDTO;
+import org.weviewapp.dto.RegisterDTO;
 
 public interface AuthService {
-    String login(LoginDto loginDto);
+    String login(LoginDTO loginDto);
 
-    String register(RegisterDto registerDto);
+    String register(RegisterDTO registerDto);
 }

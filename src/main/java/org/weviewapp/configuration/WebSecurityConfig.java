@@ -43,12 +43,9 @@ public class WebSecurityConfig {
         http.csrf().disable()
                 .cors().and()
                 .authorizeHttpRequests((authorize) ->
-                        //authorize.anyRequest().authenticated()
-//                        authorize.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-//                                .requestMatchers("/api/auth/**").permitAll()
-//                                .anyRequest().authenticated()
-                                authorize.requestMatchers("/api/auth/**").permitAll()
-                                        .requestMatchers("/principal").hasRole("USER")
+                                        authorize
+                                                .requestMatchers("/api/product/**").hasRole("USER")
+                                                .requestMatchers("/api/auth/**").permitAll()
                                         .anyRequest().authenticated()
                 ).exceptionHandling( exception -> exception
                     .authenticationEntryPoint(authenticationEntryPoint)
