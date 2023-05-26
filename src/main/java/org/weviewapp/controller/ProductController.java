@@ -12,7 +12,7 @@ import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.service.ProductService;
-import utils.ImageUtil;
+import org.weviewapp.utils.ImageUtil;
 
 import java.util.*;
 
@@ -35,7 +35,7 @@ public class ProductController {
         Product product = new Product();
         product.setId(UUID.randomUUID());
         product.setName(productDto.getName());
-        product.setType(productDto.getCategory());
+        product.setCategory(productDto.getCategory());
         product.setReleaseYear(productDto.getReleaseYear());
         product.setDescription(productDto.getDescription());
 
@@ -75,10 +75,12 @@ public class ProductController {
 
             productDTO.setProductId(product.getId());
             productDTO.setName(product.getName());
-            productDTO.setCategory(product.getType());
+            productDTO.setCategory(product.getCategory());
             productDTO.setReleaseYear(product.getReleaseYear());
             productDTO.setDescription(product.getDescription());
-            
+            productDTO.setDate_created(product.getCreated());
+            productDTO.setDate_updated(product.getUpdated());
+
             productDTOList.add(productDTO);
         }
 

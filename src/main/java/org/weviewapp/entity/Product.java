@@ -1,6 +1,7 @@
 package org.weviewapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +17,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-
+@Builder
 public class Product {
     public enum Category {
         SMARTPHONES,
@@ -34,7 +35,7 @@ public class Product {
 
     @Enumerated(EnumType.STRING)
     @Column(name="category")
-    private @Getter @Setter Category type;
+    private @Getter @Setter Category category;
 
     @Column(name="release_year")
     private @Getter @Setter Year releaseYear;
@@ -61,9 +62,11 @@ public class Product {
     }
 
     @JsonManagedReference
+    @Nullable
     @OneToMany(mappedBy = "product", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private List<ProductImage> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @Nullable
     private List<Review> reviews = new ArrayList<>();
 }

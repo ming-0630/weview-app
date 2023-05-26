@@ -1,4 +1,4 @@
-package utils;
+package org.weviewapp.utils;
 
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.http.HttpStatus;
