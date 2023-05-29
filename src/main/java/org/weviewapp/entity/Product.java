@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
+import org.weviewapp.enums.ProductCategory;
 
 import java.time.Year;
 import java.util.ArrayList;
@@ -16,16 +17,7 @@ import java.util.UUID;
 @Table(name="product")
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
-@Builder
 public class Product {
-    public enum Category {
-        SMARTPHONES,
-        COMPUTERS,
-        HOMEAPPLIANCES,
-        MUSIC,
-    }
-
     @Id
     @Column(name="product_id")
     private @Getter @Setter UUID id;
@@ -35,7 +27,7 @@ public class Product {
 
     @Enumerated(EnumType.STRING)
     @Column(name="category")
-    private @Getter @Setter Category category;
+    private @Getter @Setter ProductCategory category;
 
     @Column(name="release_year")
     private @Getter @Setter Year releaseYear;
@@ -62,6 +54,8 @@ public class Product {
     }
 
     @JsonManagedReference
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @Nullable
     @OneToMany(mappedBy = "product", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private List<ProductImage> images = new ArrayList<>();

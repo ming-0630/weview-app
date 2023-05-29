@@ -2,8 +2,8 @@ package org.weviewapp.dto;
 
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
-import org.weviewapp.entity.Product;
 import org.weviewapp.entity.Review;
+import org.weviewapp.enums.ProductCategory;
 
 import java.time.Year;
 import java.util.Date;
@@ -12,14 +12,22 @@ import java.util.UUID;
 
 @Data
 public class ProductDTO {
+    // Common fields
     private UUID productId;
     private String name;
-    private Product.Category category;
+    private ProductCategory category;
     private Year releaseYear;
     private String description;
     private Date date_created;
     private Date date_updated;
+
+    // Preview field
     private byte[] coverImage;
-    private List<MultipartFile> images;
+
+    // Details field
+    private List<byte[]> images;
     private List<Review> reviews;
+
+    // Uploaded field
+    private List<MultipartFile> uploadedImages;
 }

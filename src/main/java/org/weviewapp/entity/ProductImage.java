@@ -11,7 +11,6 @@ import java.util.UUID;
 @Table(name="product_image")
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 public class ProductImage {
     @Id
     @Column(name="product_image_id")
@@ -19,6 +18,8 @@ public class ProductImage {
     @Setter UUID id;
 
     @JsonBackReference
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private Product product;
