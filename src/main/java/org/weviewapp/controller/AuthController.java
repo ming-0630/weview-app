@@ -18,11 +18,13 @@ import org.weviewapp.entity.RefreshToken;
 import org.weviewapp.entity.Role;
 import org.weviewapp.entity.User;
 import org.weviewapp.exception.RefreshTokenException;
+import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.RoleRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.security.JwtTokenProvider;
 import org.weviewapp.service.AuthService;
 import org.weviewapp.service.RefreshTokenService;
+import org.weviewapp.utils.ImageUtil;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -58,6 +60,13 @@ public class AuthController {
                 jwtAuthResponse.setUser(loggedInUser.get());
                 String refreshToken = refreshTokenService.createRefreshToken(loggedInUser.get().getId()).getToken();
                 jwtAuthResponse.setRefreshToken(refreshToken);
+
+                try{
+                    byte[] userImage = ImageUtil.loadImage(loggedInUser.get().getProfileImageDirectory());
+                    jwtAuthResponse.setUserImage(userImage);
+                } catch (Exception e) {
+                    throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+                }
             }
         return ResponseEntity.ok(jwtAuthResponse);
     }

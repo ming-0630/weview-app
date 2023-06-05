@@ -46,6 +46,7 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests((authorize) ->
                                         authorize
                                                 .requestMatchers(HttpMethod.GET,"/api/product/**").permitAll()
+                                                .requestMatchers("/api/review/**").hasRole("USER")
                                                 .requestMatchers("/api/product/**").hasRole("USER")
                                                 .requestMatchers("/api/auth/**").permitAll()
                                         .anyRequest().authenticated()
@@ -56,7 +57,6 @@ public class WebSecurityConfig {
                 );
 
         http.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 

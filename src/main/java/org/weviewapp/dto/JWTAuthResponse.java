@@ -15,4 +15,5 @@ public class JWTAuthResponse {
     private String tokenType = "Bearer";
     private String refreshToken;
     private User user;
+    private byte[] userImage;
 }

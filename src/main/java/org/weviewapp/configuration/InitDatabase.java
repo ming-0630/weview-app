@@ -69,46 +69,49 @@ public class InitDatabase implements CommandLineRunner {
                 int randomYear = random.nextInt(currentYear - 2000 + 1) + 2000;
                 p.setReleaseYear(Year.parse(String.valueOf(randomYear)));
 
-                ProductImage newImage = new ProductImage();
-                newImage.setId(UUID.randomUUID());
-                newImage.setProduct(p);
+                for(int j = 0; j <= random.nextInt(3); j++) {
+                    ProductImage newImage = new ProductImage();
+                    newImage.setId(UUID.randomUUID());
+                    newImage.setProduct(p);
 
-                switch (p.getCategory()) {
-                    case MUSIC -> {
-                        List<String> musicImage = new ArrayList<>();
-                        musicImage.add("PRODUCT_IMG_9d8c272a-f1b5-4bb0-bac7-0dc76d88bc65.png");
-                        musicImage.add("PRODUCT_IMG_fc772fcc-88f7-40a1-9cb3-9f2edd67a841.png");
-                        musicImage.add("PRODUCT_IMG_70b8d218-72ba-4bec-98fa-69ce70801750.png");
+                    switch (p.getCategory()) {
+                        case MUSIC -> {
+                            List<String> musicImage = new ArrayList<>();
+                            musicImage.add("PRODUCT_IMG_9d8c272a-f1b5-4bb0-bac7-0dc76d88bc65.png");
+                            musicImage.add("PRODUCT_IMG_fc772fcc-88f7-40a1-9cb3-9f2edd67a841.png");
+                            musicImage.add("PRODUCT_IMG_70b8d218-72ba-4bec-98fa-69ce70801750.png");
 
-                        newImage.setImageDirectory(musicImage.get(random.nextInt(musicImage.size())));
-                        p.getImages().add(newImage);
-                    }
-                    case COMPUTERS -> {
-                        List<String> computerImage = new ArrayList<>();
-                        computerImage.add("PRODUCT_IMG_f60dcc58-3230-442d-933c-67854bfbb061.png");
-                        computerImage.add("PRODUCT_IMG_3132d2f2-be5e-42b5-b6c5-36fd5bb60bc2.png");
-                        computerImage.add("PRODUCT_IMG_c1c0dc33-13f0-4ccf-89cf-cf04a85662f1.png");
+                            newImage.setImageDirectory(musicImage.get(random.nextInt(musicImage.size())));
+                            p.getImages().add(newImage);
+                        }
+                        case COMPUTERS -> {
+                            List<String> computerImage = new ArrayList<>();
+                            computerImage.add("PRODUCT_IMG_f60dcc58-3230-442d-933c-67854bfbb061.png");
+                            computerImage.add("PRODUCT_IMG_3132d2f2-be5e-42b5-b6c5-36fd5bb60bc2.png");
+                            computerImage.add("PRODUCT_IMG_c1c0dc33-13f0-4ccf-89cf-cf04a85662f1.png");
 
-                        newImage.setImageDirectory(computerImage.get(random.nextInt(computerImage.size())));
-                        p.getImages().add(newImage);
-                    }
-                    case SMARTPHONES -> {
-                        List<String> smartphoneImage = new ArrayList<>();
-                        smartphoneImage.add("PRODUCT_IMG_86b37a2d-5f27-4df9-a73c-92ebe4146a71.png");
-                        smartphoneImage.add("PRODUCT_IMG_ab471e8c-c1f9-4baf-963a-3d1d4e386278.png");
-                        smartphoneImage.add("PRODUCT_IMG_c00a724f-7fbc-4a65-a762-8a4d93e011dd.png");
+                            newImage.setImageDirectory(computerImage.get(random.nextInt(computerImage.size())));
+                            p.getImages().add(newImage);
+                        }
+                        case SMARTPHONES -> {
+                            List<String> smartphoneImage = new ArrayList<>();
+                            smartphoneImage.add("PRODUCT_IMG_86b37a2d-5f27-4df9-a73c-92ebe4146a71.png");
+                            smartphoneImage.add("PRODUCT_IMG_ab471e8c-c1f9-4baf-963a-3d1d4e386278.png");
+                            smartphoneImage.add("PRODUCT_IMG_c00a724f-7fbc-4a65-a762-8a4d93e011dd.png");
 
-                        newImage.setImageDirectory(smartphoneImage.get(random.nextInt(smartphoneImage.size())));
-                        p.getImages().add(newImage);
-                    }
-                    case HOMEAPPLIANCES -> {
-                        List<String> homeImage = new ArrayList<>();
-                        homeImage.add("PRODUCT_IMG_d6f6470d-d106-4625-aaeb-86b3e528582c.png");
-                        homeImage.add("PRODUCT_IMG_0520b7ad-8c1a-4620-a69a-406b496786a6.png");
-                        homeImage.add("PRODUCT_IMG_53f4ed65-80af-4e6d-be8d-908acd7f22cb.png");
+                            newImage.setImageDirectory(smartphoneImage.get(random.nextInt(smartphoneImage.size())));
+                            p.getImages().add(newImage);
+                        }
+                        case HOMEAPPLIANCES -> {
+                            List<String> homeImage = new ArrayList<>();
+                            homeImage.add("PRODUCT_IMG_d6f6470d-d106-4625-aaeb-86b3e528582c.png");
+                            homeImage.add("PRODUCT_IMG_0520b7ad-8c1a-4620-a69a-406b496786a6.png");
+                            homeImage.add("PRODUCT_IMG_53f4ed65-80af-4e6d-be8d-908acd7f22cb.png");
 
-                        newImage.setImageDirectory(homeImage.get(random.nextInt(homeImage.size())));
-                        p.getImages().add(newImage);
+                            newImage.setImageDirectory(homeImage.get(random.nextInt(homeImage.size())));
+
+                            p.getImages().add(newImage);
+                        }
                     }
                 }
                 productRepository.save(p);
