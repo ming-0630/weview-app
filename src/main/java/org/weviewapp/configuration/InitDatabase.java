@@ -6,15 +6,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
-import org.weviewapp.entity.Product;
-import org.weviewapp.entity.ProductImage;
-import org.weviewapp.entity.Role;
-import org.weviewapp.entity.User;
+import org.weviewapp.entity.*;
 import org.weviewapp.enums.ProductCategory;
 import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.repository.RoleRepository;
 import org.weviewapp.repository.UserRepository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.Year;
 import java.util.*;
 
@@ -30,34 +29,31 @@ public class InitDatabase implements CommandLineRunner {
     ProductRepository productRepository;
     @Override
     public void run(String... args) throws Exception {
+
+
         // Initialize Role
         if (roleRepository.count() <= 0) {
+                log.info("Initializing roles");
                 log.info("Preloading " + roleRepository.save(Role.builder().name("ROLE_USER").build()));
                 log.info("Preloading " + roleRepository.save(Role.builder().name("ROLE_ADMIN").build()));
                 log.info("Preloading " + roleRepository.save(Role.builder().name("ROLE_BUSINESS").build()));
         }
 
         // Initialize User
-        Role roles = roleRepository.findByName("ROLE_USER").get();
         if (userRepository.count() <= 0) {
-                log.info("Preloading " + userRepository.save(new User(
-                        UUID.randomUUID(),
-                        "megumi",
-                        "Megumi Katou",
-                        "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
-                        "ProfilePic_6f47c27e-2679-4890-b830-52c6bcd9c9ec.jpg",
-                        Collections.singleton(roles)
-                )));
+            log.info("Initializing user");
+            createUsers();
             }
 
         // Initialize Product
         if (productRepository.count() <= 0) {
+            log.info("Initializing products");
             ProductCategory[] categories = ProductCategory.values();
             Random random = new Random();
-            for(int i = 0; i <= 50; i++ ) {
+            for(int i = 0; i <= 50; i++) {
                 Product p = new Product();
 
-                p.setId(UUID.randomUUID());
+                p.setProductId(UUID.randomUUID());
                 char c = (char)(random.nextInt(26) + 'a');
                 p.setName(c + ": Test Product " + i);
 
@@ -69,6 +65,7 @@ public class InitDatabase implements CommandLineRunner {
                 int randomYear = random.nextInt(currentYear - 2000 + 1) + 2000;
                 p.setReleaseYear(Year.parse(String.valueOf(randomYear)));
 
+                // Add 1-3 images to the product
                 for(int j = 0; j <= random.nextInt(3); j++) {
                     ProductImage newImage = new ProductImage();
                     newImage.setId(UUID.randomUUID());
@@ -114,9 +111,76 @@ public class InitDatabase implements CommandLineRunner {
                         }
                     }
                 }
+
+                // Add 0 - 20 Reviews
+                List<User> users = userRepository.findAll();
+                for (int j = 0; j < random.nextInt(21); j++) {
+                    int index = random.nextInt(users.size());
+
+                    User user = users.get(index);
+                    users.remove(index);
+
+                    Review r = createReview(p, user);
+                    p.getReviews().add(r);
+                }
                 productRepository.save(p);
             }
             log.info("Preloaded random 50 products");
         }
         }
+
+        private void createUsers() {
+            log.info("Preloading users");
+            Role roles = roleRepository.findByName("ROLE_USER").get();
+            userRepository.save(new User(
+                    UUID.randomUUID(),
+                    "megumi",
+                    "Megumi Katou",
+                    "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
+                    "ProfilePic_6f47c27e-2679-4890-b830-52c6bcd9c9ec.jpg",
+                    Collections.singleton(roles)
+            ));
+
+            for (int i = 0; i <= 15; i++) {
+                userRepository.save(new User(
+                        UUID.randomUUID(),
+                        "user" + i + "@gmail.com",
+                        "User #" + i,
+                        "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
+                        "",
+                        Collections.singleton(roles)
+                ));
+            }
+        }
+
+        private Review createReview(Product p, User u) {
+            Random random = new Random();
+
+            Review r = new Review();
+            r.setId(UUID.randomUUID());
+            r.setTitle("Lorem Ipsum");
+            r.setDescription("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque sodales magna at enim posuere condimentum. Curabitur aliquet aliquet tellus a aliquet. Aenean scelerisque lectus consectetur ante pretium, eu tincidunt ante feugiat. Cras porta eget dolor sed porta. Ut tempus magna at neque vulputate, nec interdum neque convallis. Donec eget elementum felis, non hendrerit sem. Maecenas semper, ipsum id venenatis porta, felis sapien interdum nulla, et vulputate odio justo sit amet lorem.");
+            r.setProduct(p);
+            r.setPrice(BigDecimal.valueOf(random.nextDouble(1000)));
+            r.setRating(random.nextInt(2, 6));
+            r.setUser(u);
+
+            int minDay = (int) LocalDate.of(2020, 1, 1).toEpochDay();
+            int maxDay = (int) LocalDate.of(2023, 1, 1).toEpochDay();
+            long randomDay = minDay + random.nextInt(maxDay - minDay);
+
+            LocalDate randomDate = LocalDate.ofEpochDay(randomDay);
+            r.setDateCreated(randomDate.atStartOfDay());
+
+            for (int i = 0; i < random.nextInt(4); i++) {
+                ReviewImage ri = new ReviewImage();
+                ri.setId(UUID.randomUUID());
+                ri.setReview(r);
+                ri.setImageDirectory("template_image.png");
+
+                r.getImages().add(ri);
+            }
+
+            return r;
+        };
 }

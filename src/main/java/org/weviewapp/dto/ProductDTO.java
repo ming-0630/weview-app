@@ -2,9 +2,9 @@ package org.weviewapp.dto;
 
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
-import org.weviewapp.entity.Review;
 import org.weviewapp.enums.ProductCategory;
 
+import java.math.BigDecimal;
 import java.time.Year;
 import java.util.Date;
 import java.util.List;
@@ -20,13 +20,18 @@ public class ProductDTO {
     private String description;
     private Date date_created;
     private Date date_updated;
+    private Double rating;
+    private Integer ratingCount;
+    private BigDecimal averagePrice;
+    private BigDecimal maxPrice;
+    private BigDecimal minPrice;
 
     // Preview field
     private byte[] coverImage;
 
     // Details field
     private List<byte[]> images;
-    private List<Review> reviews;
+    private List<ReviewDTO> reviews;
 
     // Uploaded field
     private List<MultipartFile> uploadedImages;

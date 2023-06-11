@@ -1,13 +1,14 @@
 package org.weviewapp.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +24,9 @@ public class Review {
     @Column(name="review_id")
     private @Getter @Setter UUID id;
 
+    @JsonBackReference
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private Product product;
@@ -52,20 +56,25 @@ public class Review {
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date_created", nullable = false)
-    private Date created;
+    private LocalDateTime dateCreated;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date_updated", nullable = false)
-    private Date updated;
+    private LocalDateTime dateUpdated;
 
     @PrePersist
     protected void onCreate() {
-        updated = created = new Date();
+        if(dateCreated == null) {
+            dateUpdated = dateCreated = LocalDateTime.now();
+            return;
+        }
+
+        dateUpdated = dateCreated;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updated = new Date();
+        dateUpdated = LocalDateTime.now();
     }
 
 }

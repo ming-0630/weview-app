@@ -20,7 +20,7 @@ import java.util.UUID;
 public class Product {
     @Id
     @Column(name="product_id")
-    private @Getter @Setter UUID id;
+    private @Getter @Setter UUID productId;
 
     @Column(name="name")
     private @Getter @Setter String name;
@@ -47,7 +47,6 @@ public class Product {
     protected void onCreate() {
         updated = created = new Date();
     }
-
     @PreUpdate
     protected void onUpdate() {
         updated = new Date();

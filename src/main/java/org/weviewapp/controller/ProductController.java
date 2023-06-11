@@ -11,8 +11,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.dto.ProductResponseDTO;
+import org.weviewapp.dto.ReviewDTO;
+import org.weviewapp.dto.UserDTO;
 import org.weviewapp.entity.Product;
 import org.weviewapp.entity.ProductImage;
+import org.weviewapp.entity.Review;
+import org.weviewapp.entity.ReviewImage;
 import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.enums.ProductCategory;
 import org.weviewapp.exception.WeviewAPIException;
@@ -20,6 +24,8 @@ import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.service.ProductService;
 import org.weviewapp.utils.ImageUtil;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @RestController
@@ -40,7 +46,7 @@ public class ProductController {
         }
 
         Product product = new Product();
-        product.setId(UUID.randomUUID());
+        product.setProductId(UUID.randomUUID());
         product.setName(productDto.getName());
         product.setCategory(productDto.getCategory());
         product.setReleaseYear(productDto.getReleaseYear());
@@ -122,19 +128,6 @@ public class ProductController {
 
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
-
-//    @GetMapping("/search")
-//    public ResponseEntity<?> searchProducts(@RequestParam("keyword") String keyword) {
-//        Optional<List<Product>> productList = productRepository.findByNameContainingIgnoreCase(keyword);
-//        productRepository.findAll(Specification.where())
-//        if (productList.isEmpty()) {
-//            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No products found with the keyword " + keyword);
-//        }
-//        List<ProductDTO> result = productService.mapToDTO(productList.get());
-//
-//        return new ResponseEntity<>(result, HttpStatus.OK);
-//    }
-
     @GetMapping("/search")
     public ResponseEntity<?> searchProducts(@RequestParam String keyword,
                                             @RequestParam ProductCategory category,
@@ -174,7 +167,7 @@ public class ProductController {
     }
 
     @GetMapping("/details")
-    public ResponseEntity<?> searchProducts(@RequestParam String id) {
+    public ResponseEntity<?> getProductDetails(@RequestParam String id) {
 
         Optional<Product> product = productRepository
                 .findById(UUID.fromString(id));
@@ -197,13 +190,84 @@ public class ProductController {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
 
-        productDTO.setProductId(product.get().getId());
+        productDTO.setProductId(product.get().getProductId());
         productDTO.setName(product.get().getName());
         productDTO.setCategory(product.get().getCategory());
         productDTO.setReleaseYear(product.get().getReleaseYear());
         productDTO.setDescription(product.get().getDescription());
         productDTO.setDate_created(product.get().getCreated());
         productDTO.setDate_updated(product.get().getUpdated());
+
+        try {
+            if (product.get().getReviews().size() > 0) {
+                List<ReviewDTO> list = new ArrayList<>();
+
+                List<Integer> ratingList = new ArrayList<>();
+                List<BigDecimal> priceList = new ArrayList<>();
+                // If there are reviews, do this for all the reviews
+
+                for (Review review: product.get().getReviews()) {
+                    ReviewDTO reviewDTO = new ReviewDTO();
+
+                    reviewDTO.setReviewId(review.getId());
+                    reviewDTO.setTitle(review.getTitle());
+                    reviewDTO.setDescription(review.getDescription());
+                    reviewDTO.setDate_created(review.getDateCreated());
+                    reviewDTO.setRating(review.getRating());
+
+                    ratingList.add(review.getRating());
+                    priceList.add(review.getPrice());
+
+                    // Get User details
+                    UserDTO userDTO = new UserDTO();
+                    userDTO.setUser_id(review.getUser().getId());
+                    userDTO.setUsername(review.getUser().getUsername());
+
+                    if (!review.getUser().getProfileImageDirectory().isEmpty())
+                    userDTO.setUserImage(
+                            ImageUtil.loadImage(
+                                    review.getUser().getProfileImageDirectory()
+                            )
+                    );
+
+                    reviewDTO.setUser(userDTO);
+
+                    // Retrieve ALL images from review
+                    List<byte[]> images = new ArrayList<>();
+                    for (ReviewImage img : review.getImages()) {
+                        byte[] file = ImageUtil.loadImage(img.getImageDirectory());
+                        images.add(file);
+                    }
+                    reviewDTO.setImages(images);
+                    list.add(reviewDTO);
+                }
+                list.sort(Comparator.comparing(ReviewDTO::getDate_created).reversed());
+                productDTO.setReviews(list);
+
+                OptionalDouble averageRating = ratingList
+                        .stream()
+                        .mapToDouble(a -> a)
+                        .average();
+
+                productDTO.setRating(averageRating.getAsDouble());
+
+                BigDecimal averagePrice = priceList.stream()
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        .divide(BigDecimal.valueOf(ratingList.size()), RoundingMode.HALF_UP);
+
+                Optional<BigDecimal> minPrice = priceList.stream()
+                        .min(BigDecimal::compareTo);
+
+                Optional<BigDecimal> maxPrice = priceList.stream()
+                        .max(BigDecimal::compareTo);
+
+                productDTO.setAveragePrice(averagePrice);
+                productDTO.setMaxPrice(maxPrice.get());
+                productDTO.setMinPrice(minPrice.get());
+            }
+        } catch (Exception e) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
 
         return new ResponseEntity<>(productDTO, HttpStatus.OK);
     }

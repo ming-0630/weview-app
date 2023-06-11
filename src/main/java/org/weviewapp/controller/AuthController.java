@@ -61,11 +61,13 @@ public class AuthController {
                 String refreshToken = refreshTokenService.createRefreshToken(loggedInUser.get().getId()).getToken();
                 jwtAuthResponse.setRefreshToken(refreshToken);
 
-                try{
-                    byte[] userImage = ImageUtil.loadImage(loggedInUser.get().getProfileImageDirectory());
-                    jwtAuthResponse.setUserImage(userImage);
-                } catch (Exception e) {
-                    throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+                if(!loggedInUser.get().getProfileImageDirectory().equals("")) {
+                    try{
+                        byte[] userImage = ImageUtil.loadImage(loggedInUser.get().getProfileImageDirectory());
+                        jwtAuthResponse.setUserImage(userImage);
+                    } catch (Exception e) {
+                        throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+                    }
                 }
             }
         return ResponseEntity.ok(jwtAuthResponse);

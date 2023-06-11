@@ -3,10 +3,9 @@ package org.weviewapp.dto;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.entity.Product;
-import org.weviewapp.entity.User;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,8 +17,8 @@ public class ReviewDTO {
     private BigDecimal price;
     private String title;
     private String description;
-    private Date date_created;
-    private Date date_updated;
+    private LocalDateTime date_created;
+    private LocalDateTime date_updated;
 
     // When add
     private UUID productId;
@@ -27,7 +26,7 @@ public class ReviewDTO {
     private List<MultipartFile> uploadedImages;
 
     // When get
-    private User user;
+    private UserDTO user;
     private Product product;
     private List<byte[]> images;
 }
