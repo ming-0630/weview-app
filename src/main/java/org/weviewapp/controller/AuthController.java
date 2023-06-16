@@ -57,18 +57,23 @@ public class AuthController {
             Optional<User> loggedInUser = userRepository.findByEmail(userEmail);
 
             if (loggedInUser.isPresent()) {
-                jwtAuthResponse.setUser(loggedInUser.get());
-                String refreshToken = refreshTokenService.createRefreshToken(loggedInUser.get().getId()).getToken();
-                jwtAuthResponse.setRefreshToken(refreshToken);
+                UserDTO userDTO = new UserDTO();
+                userDTO.setUser_id(loggedInUser.get().getId());
+                userDTO.setUsername(loggedInUser.get().getUsername());
+//                userDTO.setRoles()
 
                 if(!loggedInUser.get().getProfileImageDirectory().equals("")) {
                     try{
                         byte[] userImage = ImageUtil.loadImage(loggedInUser.get().getProfileImageDirectory());
-                        jwtAuthResponse.setUserImage(userImage);
+                        userDTO.setUserImage(userImage);
                     } catch (Exception e) {
                         throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
                     }
                 }
+
+                jwtAuthResponse.setUser(userDTO);
+                String refreshToken = refreshTokenService.createRefreshToken(loggedInUser.get().getId()).getToken();
+                jwtAuthResponse.setRefreshToken(refreshToken);
             }
         return ResponseEntity.ok(jwtAuthResponse);
     }

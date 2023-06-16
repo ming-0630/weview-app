@@ -3,6 +3,7 @@ package org.weviewapp.dto;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.entity.Product;
+import org.weviewapp.enums.VoteType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -19,6 +20,9 @@ public class ReviewDTO {
     private String description;
     private LocalDateTime date_created;
     private LocalDateTime date_updated;
+    private Integer votes;
+    private VoteType currentUserVote;
+    private Integer commentCount;
 
     // When add
     private UUID productId;

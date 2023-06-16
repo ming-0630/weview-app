@@ -46,7 +46,9 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests((authorize) ->
                                         authorize
                                                 .requestMatchers(HttpMethod.GET,"/api/product/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET,"/api/review/**").permitAll()
                                                 .requestMatchers("/api/review/**").hasRole("USER")
+                                                .requestMatchers("/api/voting/**").hasRole("USER")
                                                 .requestMatchers("/api/product/**").hasRole("USER")
                                                 .requestMatchers("/api/auth/**").permitAll()
                                         .anyRequest().authenticated()

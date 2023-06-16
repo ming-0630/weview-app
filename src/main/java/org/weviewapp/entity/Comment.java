@@ -6,66 +6,43 @@ import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
 @Entity
 @Data
-@Table(name="review")
+@Table(name="comment")
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-
-public class Review {
+public class Comment {
     @Id
-    @Column(name="review_id")
+    @Column(name="comment_id")
     private UUID id;
+
+    @Column(name="text")
+    private String text;
+
+    @JsonManagedReference
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Nullable
+    @OneToMany(mappedBy = "comment")
+    private List<Vote> votes = new ArrayList<>();
 
     @JsonBackReference
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    private Product product;
+    @ManyToOne
+    @JoinColumn(name = "review_id")
+    private Review review;
 
-    @Column(name="rating")
-    private Integer rating;
-
-    @Column(name="title")
-    private String title;
-
-    @Column(name="price")
-    private BigDecimal price;
-
-    @Column(name="description", columnDefinition = "TEXT")
-    private String description;
-
-    @JsonManagedReference
+    @JsonBackReference
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @Nullable
-    @OneToMany(mappedBy = "review")
-    private List<Vote> votes = new ArrayList<>();
-
-    @JsonManagedReference
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @Nullable
-    @OneToMany(mappedBy = "review")
-    private List<Comment> comments = new ArrayList<>();
-
-    @JsonManagedReference
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @Nullable
-    @OneToMany(mappedBy = "review", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    private List<ReviewImage> images = new ArrayList<>();
-
-    @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "user_id")
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user;
 
     @Temporal(TemporalType.TIMESTAMP)
@@ -82,7 +59,6 @@ public class Review {
             dateUpdated = dateCreated = LocalDateTime.now();
             return;
         }
-
         dateUpdated = dateCreated;
     }
 
@@ -92,3 +68,5 @@ public class Review {
     }
 
 }
+
+

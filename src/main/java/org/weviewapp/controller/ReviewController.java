@@ -1,21 +1,29 @@
 package org.weviewapp.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.weviewapp.dto.CommentDTO;
 import org.weviewapp.dto.RatingData;
 import org.weviewapp.dto.ReviewDTO;
-import org.weviewapp.entity.Product;
-import org.weviewapp.entity.Review;
-import org.weviewapp.entity.ReviewImage;
-import org.weviewapp.entity.User;
+import org.weviewapp.dto.UserDTO;
+import org.weviewapp.entity.*;
 import org.weviewapp.enums.ImageCategory;
+import org.weviewapp.enums.VoteOn;
+import org.weviewapp.enums.VoteType;
 import org.weviewapp.exception.WeviewAPIException;
+import org.weviewapp.repository.CommentRepository;
 import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.repository.ReviewRepository;
 import org.weviewapp.repository.UserRepository;
+import org.weviewapp.service.VoteService;
 import org.weviewapp.utils.ImageUtil;
 
 import java.time.LocalDateTime;
@@ -29,9 +37,13 @@ public class ReviewController {
     @Autowired
     ReviewRepository reviewRepository;
     @Autowired
+    CommentRepository commentRepository;
+    @Autowired
     ProductRepository productRepository;
     @Autowired
     UserRepository userRepository;
+    @Autowired
+    private VoteService voteService;
     @PostMapping("/add")
     public ResponseEntity<?> addReview(@ModelAttribute ReviewDTO reviewDTO) {
         //Check if user exists
@@ -182,6 +194,106 @@ public class ReviewController {
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @GetMapping("/getComments")
+    public ResponseEntity<?> getComments(
+            @RequestParam String reviewId,
+            @RequestParam Integer pageNum
+    ) {
+        Page<Comment> commentList;
+        Pageable pageable = PageRequest.of(pageNum - 1, 10);
+
+        commentList = commentRepository.findByReviewIdOrderByDateCreatedDesc(UUID.fromString(reviewId), pageable);
+        List<CommentDTO> comments = new ArrayList<>();
+
+        if (commentList.isEmpty()) {
+            // No comments
+            Map<String, Object> response = new HashMap<>();
+            response.put("commentList", comments);
+            response.put("currentPage", pageNum);
+            response.put("hasNext", commentList.hasNext());
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+
+
+
+        for(Comment c: commentList) {
+            CommentDTO comment = new CommentDTO();
+            comment.setCommentId(c.getId());
+            comment.setText(c.getText());
+            comment.setDateCreated(c.getDateCreated());
+
+            comment.setVotes(voteService.getTotalUpvotes(VoteOn.COMMENT, c.getId()) -
+                    voteService.getTotalDownvotes(VoteOn.COMMENT, c.getId()));
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                Optional<User> user = userRepository.findByEmail(authentication.getName());
+
+                if (!user.isEmpty()) {
+                    VoteType voteType = voteService.getCurrentUserVote(VoteOn.COMMENT, c.getId(), user.get().getId());
+                    if (voteType != null){
+                        comment.setCurrentUserVote(voteType);
+                    }
+                }
+            }
+
+            UserDTO userDTO = new UserDTO();
+            userDTO.setUser_id(c.getUser().getId());
+            userDTO.setUsername(c.getUser().getUsername());
+
+            if(!c.getUser().getProfileImageDirectory().equals("")) {
+                try{
+                    byte[] userImage = ImageUtil.loadImage(c.getUser().getProfileImageDirectory());
+                    userDTO.setUserImage(userImage);
+                } catch (Exception e) {
+                    throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+                }
+            }
+            comment.setUser(userDTO);
+
+            comments.add(comment);
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("commentList", comments);
+        response.put("currentPage", pageNum);
+        response.put("hasNext", commentList.hasNext());
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/addComment")
+    public ResponseEntity<?> addComment(
+            @RequestParam String reviewId,
+            @RequestParam String userId,
+            @RequestParam String comment) {
+
+        Comment newComment = new Comment();
+        newComment.setId(UUID.randomUUID());
+        newComment.setText(comment);
+
+        Optional<Review> review = reviewRepository.findById(UUID.fromString(reviewId));
+        if (review.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Error: Cannot find review!");
+        }
+        newComment.setReview(review.get());
+
+        Optional<User> user = userRepository.findById(UUID.fromString(userId));
+        if (user.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Error: Cannot find user!");
+        }
+        newComment.setUser(user.get());
+
+       Comment savedComment = commentRepository.save(newComment);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Added successfully!");
+        response.put("comment", savedComment);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    // TODO move to service layer
 
     private List<RatingData> getRatingDataList(LocalDateTime startDate,
                                                LocalDateTime endDate,

@@ -7,21 +7,25 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.dto.ProductResponseDTO;
 import org.weviewapp.dto.ReviewDTO;
 import org.weviewapp.dto.UserDTO;
-import org.weviewapp.entity.Product;
-import org.weviewapp.entity.ProductImage;
-import org.weviewapp.entity.Review;
-import org.weviewapp.entity.ReviewImage;
+import org.weviewapp.entity.*;
 import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.enums.ProductCategory;
+import org.weviewapp.enums.VoteOn;
+import org.weviewapp.enums.VoteType;
 import org.weviewapp.exception.WeviewAPIException;
+import org.weviewapp.repository.CommentRepository;
 import org.weviewapp.repository.ProductRepository;
+import org.weviewapp.repository.UserRepository;
 import org.weviewapp.service.ProductService;
+import org.weviewapp.service.VoteService;
 import org.weviewapp.utils.ImageUtil;
 
 import java.math.BigDecimal;
@@ -36,7 +40,13 @@ public class ProductController {
     @Autowired
     private ProductRepository productRepository;
     @Autowired
+    private UserRepository userRepository;
+    @Autowired
     private ProductService productService;
+    @Autowired
+    private CommentRepository commentRepository;
+    @Autowired
+    private VoteService voteService;
 
     @PostMapping("/add")
     public ResponseEntity<?> addProduct(@ModelAttribute ProductDTO productDto) {
@@ -214,6 +224,22 @@ public class ProductController {
                     reviewDTO.setDescription(review.getDescription());
                     reviewDTO.setDate_created(review.getDateCreated());
                     reviewDTO.setRating(review.getRating());
+                    reviewDTO.setVotes(voteService.getTotalUpvotes(VoteOn.REVIEW, review.getId()) -
+                            voteService.getTotalDownvotes(VoteOn.REVIEW, review.getId()));
+                    reviewDTO.setCommentCount(commentRepository.countByReviewId(review.getId()));
+
+                    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                    if (authentication != null && authentication.isAuthenticated()) {
+                        Optional<User> user = userRepository.findByEmail(authentication.getName());
+
+                        if (!user.isEmpty()) {
+                            VoteType voteType = voteService.getCurrentUserVote(VoteOn.REVIEW,
+                                    review.getId(), user.get().getId());
+                            if (voteType != null){
+                                reviewDTO.setCurrentUserVote(voteType);
+                            }
+                        }
+                    }
 
                     ratingList.add(review.getRating());
                     priceList.add(review.getPrice());
