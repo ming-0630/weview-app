@@ -28,6 +28,7 @@ public class ProductDTO {
 
     // Preview field
     private byte[] coverImage;
+    private boolean isWatchlisted;
 
     // Details field
     private List<byte[]> images;

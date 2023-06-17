@@ -60,7 +60,6 @@ public class AuthController {
                 UserDTO userDTO = new UserDTO();
                 userDTO.setUser_id(loggedInUser.get().getId());
                 userDTO.setUsername(loggedInUser.get().getUsername());
-//                userDTO.setRoles()
 
                 if(!loggedInUser.get().getProfileImageDirectory().equals("")) {
                     try{

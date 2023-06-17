@@ -3,13 +3,14 @@ package org.weviewapp.service.impl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.entity.Product;
 import org.weviewapp.entity.Review;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.ProductRepository;
+import org.weviewapp.repository.UserRepository;
 import org.weviewapp.service.ProductService;
+import org.weviewapp.service.WatchlistService;
 import org.weviewapp.utils.ImageUtil;
 
 import java.util.ArrayList;
@@ -20,11 +21,11 @@ import java.util.OptionalDouble;
 public class ProductServiceImpl implements ProductService {
     @Autowired
     private ProductRepository productRepository;
-    @Override
-    public String handleImages(MultipartFile image) {
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private WatchlistService watchlistService;
 
-        return "";
-    }
     @Override
     public List<ProductDTO> mapToPreviewDTO(List<Product> products) {
         List<ProductDTO> productDTOList = new ArrayList<>();
@@ -49,6 +50,7 @@ public class ProductServiceImpl implements ProductService {
             productDTO.setDate_created(product.getCreated());
             productDTO.setDate_updated(product.getUpdated());
             productDTO.setRatingCount(product.getReviews().size());
+            productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product));
 
             // Used for non-detailed product getting
             if (product.getReviews().size() > 0) {

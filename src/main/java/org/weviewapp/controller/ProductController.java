@@ -26,6 +26,7 @@ import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.service.ProductService;
 import org.weviewapp.service.VoteService;
+import org.weviewapp.service.WatchlistService;
 import org.weviewapp.utils.ImageUtil;
 
 import java.math.BigDecimal;
@@ -47,6 +48,8 @@ public class ProductController {
     private CommentRepository commentRepository;
     @Autowired
     private VoteService voteService;
+    @Autowired
+    private WatchlistService watchlistService;
 
     @PostMapping("/add")
     public ResponseEntity<?> addProduct(@ModelAttribute ProductDTO productDto) {
@@ -207,6 +210,7 @@ public class ProductController {
         productDTO.setDescription(product.get().getDescription());
         productDTO.setDate_created(product.get().getCreated());
         productDTO.setDate_updated(product.get().getUpdated());
+        productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product.get()));
 
         try {
             if (product.get().getReviews().size() > 0) {
