@@ -4,25 +4,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.dto.CommentDTO;
 import org.weviewapp.dto.RatingData;
 import org.weviewapp.dto.ReviewDTO;
-import org.weviewapp.dto.UserDTO;
 import org.weviewapp.entity.*;
 import org.weviewapp.enums.ImageCategory;
-import org.weviewapp.enums.VoteOn;
-import org.weviewapp.enums.VoteType;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.CommentRepository;
 import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.repository.ReviewRepository;
 import org.weviewapp.repository.UserRepository;
+import org.weviewapp.service.CommentService;
+import org.weviewapp.service.ReviewService;
 import org.weviewapp.service.VoteService;
 import org.weviewapp.utils.ImageUtil;
 
@@ -43,7 +41,11 @@ public class ReviewController {
     @Autowired
     UserRepository userRepository;
     @Autowired
-    private VoteService voteService;
+    VoteService voteService;
+    @Autowired
+    ReviewService reviewService;
+    @Autowired
+    CommentService commentService;
     @PostMapping("/add")
     public ResponseEntity<?> addReview(@ModelAttribute ReviewDTO reviewDTO) {
         //Check if user exists
@@ -95,6 +97,13 @@ public class ReviewController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @PostMapping("/delete")
+    public ResponseEntity<?> deleteReview(@RequestParam String reviewId) {
+        reviewService.deleteReview(UUID.fromString(reviewId));
+        Map<String, Object> response = new HashMap<>();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @GetMapping("/checkUserEligibility")
     public ResponseEntity<?> checkUserEligibility(@RequestParam String userId,
                                                   @RequestParam String productId
@@ -119,7 +128,7 @@ public class ReviewController {
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
-        // Add account age check, verified check.
+        // TODO Add account age check, verified check.
 
 
         // Success case
@@ -195,6 +204,75 @@ public class ReviewController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @GetMapping("/getReviews")
+    public ResponseEntity<?> getReviews(
+            @RequestParam String userId,
+            @RequestParam Integer pageNum,
+            @RequestParam (defaultValue = "dateCreated") String sortBy,
+            @RequestParam (defaultValue = "desc") String direction
+    ) {
+        Sort.Direction sortDirection = Sort.Direction.ASC;
+
+        if(direction.equalsIgnoreCase("desc")) {
+            sortDirection = Sort.Direction.DESC;
+        }
+
+        Pageable pageable = PageRequest.of(pageNum - 1, 10, sortDirection, sortBy);
+
+        Page<Review> reviewList = reviewRepository.findByUserId(UUID.fromString(userId), pageable);
+
+        if (reviewList.isEmpty()) {
+            // No reviews
+            Map<String, Object> response = new HashMap<>();
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+
+        List<ReviewDTO> reviews = reviewService.mapToReviewDTO(reviewList.getContent());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("reviewList", reviews);
+        response.put("currentPage", pageNum);
+        response.put("totalReviews", reviewList.getTotalElements());
+        response.put("totalPages", reviewList.getTotalPages());
+
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/getUserComments")
+    public ResponseEntity<?> getUserComments(
+            @RequestParam String userId,
+            @RequestParam Integer pageNum,
+            @RequestParam (defaultValue = "dateCreated") String sortBy,
+            @RequestParam (defaultValue = "desc") String direction
+    ) {
+        Sort.Direction sortDirection = Sort.Direction.ASC;
+
+        if(direction.equalsIgnoreCase("desc")) {
+            sortDirection = Sort.Direction.DESC;
+        }
+
+        Pageable pageable = PageRequest.of(pageNum - 1, 10, sortDirection, sortBy);
+
+        Page<Comment> commentList = commentRepository.findByUserId(UUID.fromString(userId), pageable);
+
+        if (commentList.isEmpty()) {
+            // No reviews
+            Map<String, Object> response = new HashMap<>();
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
+
+        List<CommentDTO> comments = commentService.mapToCommentDTO(commentList.getContent());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("commentList", comments);
+        response.put("currentPage", pageNum);
+        response.put("totalComments", commentList.getTotalElements());
+        response.put("totalPages", commentList.getTotalPages());
+
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
     @GetMapping("/getComments")
     public ResponseEntity<?> getComments(
             @RequestParam String reviewId,
@@ -204,55 +282,17 @@ public class ReviewController {
         Pageable pageable = PageRequest.of(pageNum - 1, 10);
 
         commentList = commentRepository.findByReviewIdOrderByDateCreatedDesc(UUID.fromString(reviewId), pageable);
-        List<CommentDTO> comments = new ArrayList<>();
 
         if (commentList.isEmpty()) {
             // No comments
             Map<String, Object> response = new HashMap<>();
-            response.put("commentList", comments);
+            response.put("commentList", new ArrayList<>());
             response.put("currentPage", pageNum);
             response.put("hasNext", commentList.hasNext());
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
-
-
-        for(Comment c: commentList) {
-            CommentDTO comment = new CommentDTO();
-            comment.setCommentId(c.getId());
-            comment.setText(c.getText());
-            comment.setDateCreated(c.getDateCreated());
-
-            comment.setVotes(voteService.getTotalUpvotes(VoteOn.COMMENT, c.getId()) -
-                    voteService.getTotalDownvotes(VoteOn.COMMENT, c.getId()));
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.isAuthenticated()) {
-                Optional<User> user = userRepository.findByEmail(authentication.getName());
-
-                if (!user.isEmpty()) {
-                    VoteType voteType = voteService.getCurrentUserVote(VoteOn.COMMENT, c.getId(), user.get().getId());
-                    if (voteType != null){
-                        comment.setCurrentUserVote(voteType);
-                    }
-                }
-            }
-
-            UserDTO userDTO = new UserDTO();
-            userDTO.setUser_id(c.getUser().getId());
-            userDTO.setUsername(c.getUser().getUsername());
-
-            if(!c.getUser().getProfileImageDirectory().equals("")) {
-                try{
-                    byte[] userImage = ImageUtil.loadImage(c.getUser().getProfileImageDirectory());
-                    userDTO.setUserImage(userImage);
-                } catch (Exception e) {
-                    throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
-                }
-            }
-            comment.setUser(userDTO);
-
-            comments.add(comment);
-        }
+        List<CommentDTO> comments = commentService.mapToCommentDTO(commentList.getContent());
 
         Map<String, Object> response = new HashMap<>();
         response.put("commentList", comments);
@@ -290,6 +330,13 @@ public class ReviewController {
         response.put("message", "Added successfully!");
         response.put("comment", savedComment);
 
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @PostMapping("/deleteComment")
+    public ResponseEntity<?> deleteComment(@RequestParam String commentId) {
+        commentService.deleteComment(UUID.fromString(commentId));
+        Map<String, Object> response = new HashMap<>();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 

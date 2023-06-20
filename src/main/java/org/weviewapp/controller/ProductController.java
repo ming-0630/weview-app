@@ -7,24 +7,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.dto.ProductResponseDTO;
 import org.weviewapp.dto.ReviewDTO;
-import org.weviewapp.dto.UserDTO;
-import org.weviewapp.entity.*;
+import org.weviewapp.entity.Product;
+import org.weviewapp.entity.ProductImage;
 import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.enums.ProductCategory;
-import org.weviewapp.enums.VoteOn;
-import org.weviewapp.enums.VoteType;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.CommentRepository;
 import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.service.ProductService;
+import org.weviewapp.service.ReviewService;
 import org.weviewapp.service.VoteService;
 import org.weviewapp.service.WatchlistService;
 import org.weviewapp.utils.ImageUtil;
@@ -48,6 +45,8 @@ public class ProductController {
     private CommentRepository commentRepository;
     @Autowired
     private VoteService voteService;
+    @Autowired
+    private ReviewService reviewService;
     @Autowired
     private WatchlistService watchlistService;
 
@@ -212,92 +211,35 @@ public class ProductController {
         productDTO.setDate_updated(product.get().getUpdated());
         productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product.get()));
 
-        try {
             if (product.get().getReviews().size() > 0) {
-                List<ReviewDTO> list = new ArrayList<>();
-
-                List<Integer> ratingList = new ArrayList<>();
-                List<BigDecimal> priceList = new ArrayList<>();
-                // If there are reviews, do this for all the reviews
-
-                for (Review review: product.get().getReviews()) {
-                    ReviewDTO reviewDTO = new ReviewDTO();
-
-                    reviewDTO.setReviewId(review.getId());
-                    reviewDTO.setTitle(review.getTitle());
-                    reviewDTO.setDescription(review.getDescription());
-                    reviewDTO.setDate_created(review.getDateCreated());
-                    reviewDTO.setRating(review.getRating());
-                    reviewDTO.setVotes(voteService.getTotalUpvotes(VoteOn.REVIEW, review.getId()) -
-                            voteService.getTotalDownvotes(VoteOn.REVIEW, review.getId()));
-                    reviewDTO.setCommentCount(commentRepository.countByReviewId(review.getId()));
-
-                    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                    if (authentication != null && authentication.isAuthenticated()) {
-                        Optional<User> user = userRepository.findByEmail(authentication.getName());
-
-                        if (!user.isEmpty()) {
-                            VoteType voteType = voteService.getCurrentUserVote(VoteOn.REVIEW,
-                                    review.getId(), user.get().getId());
-                            if (voteType != null){
-                                reviewDTO.setCurrentUserVote(voteType);
-                            }
-                        }
-                    }
-
-                    ratingList.add(review.getRating());
-                    priceList.add(review.getPrice());
-
-                    // Get User details
-                    UserDTO userDTO = new UserDTO();
-                    userDTO.setUser_id(review.getUser().getId());
-                    userDTO.setUsername(review.getUser().getUsername());
-
-                    if (!review.getUser().getProfileImageDirectory().isEmpty())
-                    userDTO.setUserImage(
-                            ImageUtil.loadImage(
-                                    review.getUser().getProfileImageDirectory()
-                            )
-                    );
-
-                    reviewDTO.setUser(userDTO);
-
-                    // Retrieve ALL images from review
-                    List<byte[]> images = new ArrayList<>();
-                    for (ReviewImage img : review.getImages()) {
-                        byte[] file = ImageUtil.loadImage(img.getImageDirectory());
-                        images.add(file);
-                    }
-                    reviewDTO.setImages(images);
-                    list.add(reviewDTO);
-                }
+                List<ReviewDTO> list = reviewService.mapToReviewDTO(product.get().getReviews());
                 list.sort(Comparator.comparing(ReviewDTO::getDate_created).reversed());
                 productDTO.setReviews(list);
 
-                OptionalDouble averageRating = ratingList
+                OptionalDouble averageRating = list
                         .stream()
-                        .mapToDouble(a -> a)
+                        .mapToDouble(obj -> obj.getRating())
                         .average();
 
                 productDTO.setRating(averageRating.getAsDouble());
 
-                BigDecimal averagePrice = priceList.stream()
+                BigDecimal averagePrice = list.stream()
+                        .map(obj -> obj.getPrice())
                         .reduce(BigDecimal.ZERO, BigDecimal::add)
-                        .divide(BigDecimal.valueOf(ratingList.size()), RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(list.size()), RoundingMode.HALF_UP);
 
-                Optional<BigDecimal> minPrice = priceList.stream()
+                Optional<BigDecimal> minPrice = list.stream()
+                        .map(obj -> obj.getPrice())
                         .min(BigDecimal::compareTo);
 
-                Optional<BigDecimal> maxPrice = priceList.stream()
+                Optional<BigDecimal> maxPrice = list.stream()
+                        .map(obj -> obj.getPrice())
                         .max(BigDecimal::compareTo);
 
                 productDTO.setAveragePrice(averagePrice);
                 productDTO.setMaxPrice(maxPrice.get());
                 productDTO.setMinPrice(minPrice.get());
             }
-        } catch (Exception e) {
-            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
 
         return new ResponseEntity<>(productDTO, HttpStatus.OK);
     }

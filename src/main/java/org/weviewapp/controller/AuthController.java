@@ -58,7 +58,7 @@ public class AuthController {
 
             if (loggedInUser.isPresent()) {
                 UserDTO userDTO = new UserDTO();
-                userDTO.setUser_id(loggedInUser.get().getId());
+                userDTO.setId(loggedInUser.get().getId());
                 userDTO.setUsername(loggedInUser.get().getUsername());
 
                 if(!loggedInUser.get().getProfileImageDirectory().equals("")) {

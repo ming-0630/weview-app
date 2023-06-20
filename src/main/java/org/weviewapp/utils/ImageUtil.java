@@ -18,20 +18,14 @@ import java.util.UUID;
 public final class ImageUtil {
     private static final String projectRoot = System.getProperty("user.dir");
     private static final String imagesFolderPath = projectRoot + "/images/";
-    public static String uploadImage(MultipartFile file, ImageCategory category, Integer index) {
+    public static String uploadImage(MultipartFile file, ImageCategory category) {
         try {
             // Get the file name and extension
             String fileName = StringUtils.cleanPath(file.getOriginalFilename());
             String fileExtension = FilenameUtils.getExtension(fileName);
 
             // Generate a unique file name
-            String uniqueFileName;
-            if (index == null) {
-                uniqueFileName = category.name() + "_" + UUID.randomUUID() + "." + fileExtension;
-            } else {
-                uniqueFileName = category.name() + "_" + UUID.randomUUID() + "_" + index +  "." + fileExtension;
-            }
-
+            String uniqueFileName = category.name() + "_" + UUID.randomUUID() + "." + fileExtension;
 
             // Set the upload directory path
             String uploadDirectory = imagesFolderPath + File.separator;
@@ -51,23 +45,14 @@ public final class ImageUtil {
 //                    .path("/api/images/")
 //                    .path(uniqueFileName)
 //                    .toUriString();
-
             return uniqueFileName;
 //            return ResponseEntity.ok(fileUrl);
         } catch (IOException e) {
                 throw new WeviewAPIException(HttpStatus.BAD_REQUEST ,"Upload failed for " + file.getOriginalFilename());
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload the file.");
         }
     }
 
-    public static String uploadImage(MultipartFile file, ImageCategory category) {
-        return uploadImage(file, category, null);
-    }
-
     public static byte[] loadImage(String fileName) throws IOException {
-        String projectRoot = System.getProperty("user.dir");
-        String imagesFolderPath = projectRoot + "/images/";
-
         try {
             File img = new File(imagesFolderPath + fileName);
             return Files.readAllBytes(img.toPath());

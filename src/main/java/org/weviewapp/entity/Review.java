@@ -17,8 +17,8 @@ import java.util.UUID;
 @Table(name="review")
 @NoArgsConstructor
 @AllArgsConstructor
+//@SQLDelete(sql = "UPDATE review SET deleted = true WHERE review_id=?")
 @ToString
-
 public class Review {
     @Id
     @Column(name="review_id")
@@ -67,6 +67,8 @@ public class Review {
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private User user;
+
+//    private boolean deleted = Boolean.FALSE;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date_created", nullable = false)

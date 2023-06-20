@@ -18,4 +18,6 @@ public class CommentDTO {
     private LocalDateTime dateCreated;
     private Integer votes;
     private VoteType currentUserVote;
+    private UUID reviewId;
+    private UUID productId;
 }

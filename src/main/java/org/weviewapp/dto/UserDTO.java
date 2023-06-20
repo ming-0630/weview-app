@@ -6,7 +6,7 @@ import java.util.UUID;
 
 @Data
 public class UserDTO {
-    private UUID user_id;
+    private UUID id;
     private String username;
     private byte[] userImage;
 }
