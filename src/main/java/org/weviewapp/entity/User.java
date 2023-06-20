@@ -33,6 +33,9 @@ public class User {
         @Column(name="image_dir")
         private String profileImageDirectory;
 
+        @Column(name="is_verified")
+        private Boolean isVerified;
+
         @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
         @JoinTable(name = "user_roles",
                 joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "user_id"),

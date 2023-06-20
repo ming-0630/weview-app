@@ -138,6 +138,7 @@ public class InitDatabase implements CommandLineRunner {
                     "Megumi Katou",
                     "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
                     "ProfilePic_6f47c27e-2679-4890-b830-52c6bcd9c9ec.jpg",
+                    false,
                     Collections.singleton(roles),
                     new ArrayList<Vote>(),
                     new ArrayList<Comment>()
@@ -150,6 +151,7 @@ public class InitDatabase implements CommandLineRunner {
                         "User #" + i,
                         "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
                         "",
+                        false,
                         Collections.singleton(roles),
                         new ArrayList<Vote>(),
                         new ArrayList<Comment>()

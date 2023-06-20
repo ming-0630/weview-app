@@ -48,7 +48,7 @@ public final class ImageUtil {
             return uniqueFileName;
 //            return ResponseEntity.ok(fileUrl);
         } catch (IOException e) {
-                throw new WeviewAPIException(HttpStatus.BAD_REQUEST ,"Upload failed for " + file.getOriginalFilename());
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST ,"Upload failed for " + file.getOriginalFilename());
         }
     }
 
@@ -60,5 +60,25 @@ public final class ImageUtil {
             e.printStackTrace();
         }
         return null;
+    }
+    public static void deleteImage(String fileName) {
+        if(!fileName.isEmpty()) {
+            try {
+                // Set the delete directory path
+                String deleteDirectory = imagesFolderPath + File.separator;
+
+                // Create the delete directory if it doesn't exist
+                File directory = new File(deleteDirectory);
+                if (!directory.exists()) {
+                    directory.mkdirs();
+                }
+
+                // Delete the file from the delete directory
+                Path filePath = Paths.get(deleteDirectory + fileName);
+                Files.deleteIfExists(filePath);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

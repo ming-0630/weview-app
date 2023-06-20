@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.dto.ProductResponseDTO;
+import org.weviewapp.dto.UserDTO;
 import org.weviewapp.entity.Product;
 import org.weviewapp.entity.User;
 import org.weviewapp.entity.Watchlist;
@@ -17,11 +18,10 @@ import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.repository.WatchlistRepository;
 import org.weviewapp.service.ProductService;
+import org.weviewapp.service.UserService;
 import org.weviewapp.service.WatchlistService;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 public class UserController {
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private UserService userService;
     @Autowired
     private WatchlistRepository watchlistRepository;
     @Autowired
@@ -83,5 +85,19 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add product to watchlist.");
         }
+    }
+    @PostMapping("/updateProfilePicture")
+    public ResponseEntity<?> updateProfilePicture(
+            @ModelAttribute UserDTO userDTO) {
+        if (userDTO.getUploadedImage().isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No uploaded images!");
+        }
+        User updatedUser = userService.uploadUserImage(userDTO.getUploadedImage());
+        UserDTO newUserDTO = userService.mapUserToDTO(updatedUser);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Added successfully!");
+        response.put("user", newUserDTO);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

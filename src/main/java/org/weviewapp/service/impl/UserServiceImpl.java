@@ -1,0 +1,60 @@
+package org.weviewapp.service.impl;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.weviewapp.dto.UserDTO;
+import org.weviewapp.entity.User;
+import org.weviewapp.enums.ImageCategory;
+import org.weviewapp.exception.WeviewAPIException;
+import org.weviewapp.repository.UserRepository;
+import org.weviewapp.service.UserService;
+import org.weviewapp.utils.ImageUtil;
+
+import java.util.Optional;
+
+@Service
+public class UserServiceImpl implements UserService {
+
+    @Autowired
+    UserRepository userRepository;
+    @Override
+    public User uploadUserImage(MultipartFile file) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            Optional<User> user = userRepository.findByEmail(authentication.getName());
+
+            if (user.isEmpty()) {
+                throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found! Please login again to continue");
+            }
+            String newImgDir = ImageUtil.uploadImage(file, ImageCategory.PROFILE_IMG);
+            ImageUtil.deleteImage(user.get().getProfileImageDirectory());
+            user.get().setProfileImageDirectory(newImgDir);
+            return userRepository.save(user.get());
+        } else {
+            throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not authorized! Please login again to continue");
+        }
+
+    };
+
+    @Override
+    public UserDTO mapUserToDTO(User user) {
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(user.getId());
+        userDTO.setUsername(user.getUsername());
+        userDTO.setIsVerified(user.getIsVerified());
+
+        if(!user.getProfileImageDirectory().equals("")) {
+            try{
+                byte[] userImage = ImageUtil.loadImage(user.getProfileImageDirectory());
+                userDTO.setUserImage(userImage);
+            } catch (Exception e) {
+                throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+            }
+        }
+        return userDTO;
+    }
+}
