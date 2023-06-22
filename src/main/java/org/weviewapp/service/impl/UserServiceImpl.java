@@ -15,10 +15,10 @@ import org.weviewapp.service.UserService;
 import org.weviewapp.utils.ImageUtil;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserServiceImpl implements UserService {
-
     @Autowired
     UserRepository userRepository;
     @Override
@@ -37,8 +37,18 @@ public class UserServiceImpl implements UserService {
         } else {
             throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not authorized! Please login again to continue");
         }
-
     };
+
+    @Override
+    public User modifyPoints(UUID userId, Integer points) {
+            Optional<User> user = userRepository.findById(userId);
+
+            if (user.isEmpty()) {
+                throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found! Please login again to continue");
+            }
+            user.get().setPoints(user.get().getPoints() + points);
+            return userRepository.save(user.get());
+    }
 
     @Override
     public UserDTO mapUserToDTO(User user) {
@@ -46,6 +56,7 @@ public class UserServiceImpl implements UserService {
         userDTO.setId(user.getId());
         userDTO.setUsername(user.getUsername());
         userDTO.setIsVerified(user.getIsVerified());
+        userDTO.setPoints(user.getPoints());
 
         if(!user.getProfileImageDirectory().equals("")) {
             try{

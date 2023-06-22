@@ -11,6 +11,7 @@ public class UserDTO {
     private String username;
     private byte[] userImage;
     private Boolean isVerified;
+    private Integer points;
 
     // For upload
     private MultipartFile uploadedImage;

@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.dto.ProductResponseDTO;
@@ -38,6 +40,22 @@ public class UserController {
     private ProductService productService;
     @Autowired
     private WatchlistService watchlistService;
+
+    @GetMapping("/getUser")
+    public ResponseEntity<?> getUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            Optional<User> user = userRepository.findByEmail(authentication.getName());
+
+            if (user.isEmpty()) {
+                throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found! Please login again to continue");
+            }
+            UserDTO userDTO = userService.mapUserToDTO(user.get());
+            return new ResponseEntity<>(userDTO, HttpStatus.OK);
+        } else {
+            throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not authorized! Please login again to continue");
+        }
+    }
     @GetMapping("/watchlist")
     public ResponseEntity<?> getWatchlist(
             @RequestParam String userId,
@@ -99,5 +117,17 @@ public class UserController {
         response.put("user", newUserDTO);
 
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/getPoints")
+    public ResponseEntity<?> getPoints(@RequestParam String userId) {
+
+        Optional<User> user = userRepository.findById(UUID.fromString(userId));
+
+        if (user.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "User does not exist");
+        }
+
+        return new ResponseEntity<>(user.get().getPoints(), HttpStatus.OK);
     }
 }

@@ -21,6 +21,7 @@ import org.weviewapp.repository.ReviewRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.service.CommentService;
 import org.weviewapp.service.ReviewService;
+import org.weviewapp.service.UserService;
 import org.weviewapp.service.VoteService;
 import org.weviewapp.utils.ImageUtil;
 
@@ -42,6 +43,8 @@ public class ReviewController {
     UserRepository userRepository;
     @Autowired
     VoteService voteService;
+    @Autowired
+    UserService userService;
     @Autowired
     ReviewService reviewService;
     @Autowired
@@ -90,6 +93,7 @@ public class ReviewController {
 
         Review addedReview = reviewRepository.save(review);
 
+        userService.modifyPoints(user.get().getId(), 100);
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Added successfully!");
         response.put("review", addedReview);

@@ -139,6 +139,7 @@ public class InitDatabase implements CommandLineRunner {
                     "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
                     "ProfilePic_6f47c27e-2679-4890-b830-52c6bcd9c9ec.jpg",
                     false,
+                    0,
                     Collections.singleton(roles),
                     new ArrayList<Vote>(),
                     new ArrayList<Comment>()
@@ -152,6 +153,7 @@ public class InitDatabase implements CommandLineRunner {
                         "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
                         "",
                         false,
+                        0,
                         Collections.singleton(roles),
                         new ArrayList<Vote>(),
                         new ArrayList<Comment>()

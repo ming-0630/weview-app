@@ -11,20 +11,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.*;
 import org.weviewapp.dto.*;
-import org.weviewapp.dto.JWTRefreshRequest;
-import org.weviewapp.dto.LoginDTO;
-import org.weviewapp.dto.RegisterDTO;
 import org.weviewapp.entity.RefreshToken;
 import org.weviewapp.entity.Role;
 import org.weviewapp.entity.User;
 import org.weviewapp.exception.RefreshTokenException;
-import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.RoleRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.security.JwtTokenProvider;
 import org.weviewapp.service.AuthService;
 import org.weviewapp.service.RefreshTokenService;
-import org.weviewapp.utils.ImageUtil;
+import org.weviewapp.service.UserService;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -46,6 +42,8 @@ public class AuthController {
     private BCryptPasswordEncoder passwordEncoder;
     @Autowired
     private RoleRepository roleRepository;
+    @Autowired
+    private UserService userService;
 
     @PostMapping("/login")
     public ResponseEntity<JWTAuthResponse> login(@RequestBody LoginDTO loginDto){
@@ -57,19 +55,7 @@ public class AuthController {
             Optional<User> loggedInUser = userRepository.findByEmail(userEmail);
 
             if (loggedInUser.isPresent()) {
-                UserDTO userDTO = new UserDTO();
-                userDTO.setId(loggedInUser.get().getId());
-                userDTO.setUsername(loggedInUser.get().getUsername());
-                    userDTO.setIsVerified(loggedInUser.get().getIsVerified());
-
-                if(!loggedInUser.get().getProfileImageDirectory().equals("")) {
-                    try{
-                        byte[] userImage = ImageUtil.loadImage(loggedInUser.get().getProfileImageDirectory());
-                        userDTO.setUserImage(userImage);
-                    } catch (Exception e) {
-                        throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
-                    }
-                }
+                UserDTO userDTO = userService.mapUserToDTO(loggedInUser.get());
 
                 jwtAuthResponse.setUser(userDTO);
                 String refreshToken = refreshTokenService.createRefreshToken(loggedInUser.get().getId()).getToken();
@@ -112,6 +98,8 @@ public class AuthController {
         user.setUsername(registerDto.getUsername());
         user.setEmail(registerDto.getEmail());
         user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
+        user.setPoints(0);
+        user.setIsVerified(false);
 
         Role roles = roleRepository.findByName("ROLE_USER").get();
         user.setRoles(Collections.singleton(roles));
