@@ -61,4 +61,11 @@ public class User {
         @Nullable
         @OneToMany(mappedBy = "user")
         private List<Comment> comments = new ArrayList<>();
+
+        @JsonManagedReference
+        @EqualsAndHashCode.Exclude
+        @ToString.Exclude
+        @Nullable
+        @OneToMany(mappedBy = "user")
+        private List<RewardCode> rewardCodes = new ArrayList<>();
 }

@@ -24,10 +24,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public User uploadUserImage(MultipartFile file) {
         User user = getCurrentUser();
-            String newImgDir = ImageUtil.uploadImage(file, ImageCategory.PROFILE_IMG);
-            ImageUtil.deleteImage(user.getProfileImageDirectory());
-            user.setProfileImageDirectory(newImgDir);
-            return userRepository.save(user);
+        String newImgDir = ImageUtil.uploadImage(file, ImageCategory.PROFILE_IMG);
+        ImageUtil.deleteImage(user.getProfileImageDirectory());
+        user.setProfileImageDirectory(newImgDir);
+        return userRepository.save(user);
     };
 
     @Override
@@ -48,6 +48,7 @@ public class UserServiceImpl implements UserService {
         userDTO.setUsername(user.getUsername());
         userDTO.setIsVerified(user.getIsVerified());
         userDTO.setPoints(user.getPoints());
+        userDTO.setRole(user.getRoles().stream().map(x -> x.getName()).toList());
 
         if(!user.getProfileImageDirectory().equals("")) {
             try{

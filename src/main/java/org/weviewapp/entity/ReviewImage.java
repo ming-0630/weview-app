@@ -14,8 +14,7 @@ import java.util.UUID;
 public class ReviewImage {
     @Id
     @Column(name="review_image_id")
-    private @Getter
-    @Setter UUID id;
+    private UUID id;
 
     @JsonBackReference
     @EqualsAndHashCode.Exclude
@@ -25,5 +24,5 @@ public class ReviewImage {
     private Review review;
 
     @Column(name="image_dir")
-    private @Getter @Setter String imageDirectory;
+    private String imageDirectory;
 }

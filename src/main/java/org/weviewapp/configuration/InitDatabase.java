@@ -131,19 +131,22 @@ public class InitDatabase implements CommandLineRunner {
 
         private void createUsers() {
             log.info("Preloading users");
-            Role roles = roleRepository.findByName("ROLE_USER").get();
+            Role userRole = roleRepository.findByName("ROLE_USER").get();
+            Role adminRole = roleRepository.findByName("ROLE_ADMIN").get();
+
             userRepository.save(new User(
                     UUID.randomUUID(),
                     "megumi",
                     "Megumi Katou",
                     "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
-                    "ProfilePic_6f47c27e-2679-4890-b830-52c6bcd9c9ec.jpg",
                     "",
+                    "ProfilePic_6f47c27e-2679-4890-b830-52c6bcd9c9ec.jpg",
                     false,
                     0,
-                    Collections.singleton(roles),
+                    Set.of(userRole, adminRole),
                     new ArrayList<Vote>(),
-                    new ArrayList<Comment>()
+                    new ArrayList<Comment>(),
+                    new ArrayList<RewardCode>()
             ));
 
             for (int i = 0; i <= 15; i++) {
@@ -156,9 +159,10 @@ public class InitDatabase implements CommandLineRunner {
                         "",
                         false,
                         0,
-                        Collections.singleton(roles),
+                        Set.of(userRole),
                         new ArrayList<Vote>(),
-                        new ArrayList<Comment>()
+                        new ArrayList<Comment>(),
+                        new ArrayList<RewardCode>()
                 ));
             }
         }
@@ -191,6 +195,8 @@ public class InitDatabase implements CommandLineRunner {
                 r.getImages().add(ri);
             }
 
+            u.setPoints(u.getPoints() + 100);
+            userRepository.save(u);
             return r;
         };
 }

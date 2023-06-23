@@ -7,14 +7,15 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
-public class UserDTO {
+public class RewardDTO {
     private UUID id;
-    private String username;
-    private byte[] userImage;
-    private Boolean isVerified;
+    private String name;
     private Integer points;
-    private List<String> role;
+    private Integer codeCount;
 
-    // For upload
+    private byte[] image;
+
+    // Upload
+    private List<String> codes;
     private MultipartFile uploadedImage;
 }
