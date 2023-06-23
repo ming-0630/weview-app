@@ -221,23 +221,30 @@ public class ReviewController {
             sortDirection = Sort.Direction.DESC;
         }
 
-        Pageable pageable = PageRequest.of(pageNum - 1, 10, sortDirection, sortBy);
+        Pageable pageable;
+        Page<Review> pagedReview;
+        if (sortBy.equals("votes")) {
+            pageable = PageRequest.of(pageNum - 1, 5);
+            pagedReview = reviewService.getReviewsByUserIdSortByVotes(UUID.fromString(userId), sortDirection.toString(), pageable);
+        } else {
+            pageable = PageRequest.of(pageNum - 1, 5, sortDirection, sortBy);
+            pagedReview = reviewService.getReviewsByUserId(UUID.fromString(userId), pageable);
+        }
 
-        Page<Review> reviewList = reviewRepository.findByUserId(UUID.fromString(userId), pageable);
+        List<ReviewDTO> reviewDTOS = reviewService.mapToReviewDTO(pagedReview.getContent());
 
-        if (reviewList.isEmpty()) {
+
+        if (reviewDTOS.isEmpty()) {
             // No reviews
             Map<String, Object> response = new HashMap<>();
             return new ResponseEntity<>(response, HttpStatus.OK);
         }
 
-        List<ReviewDTO> reviews = reviewService.mapToReviewDTO(reviewList.getContent());
-
         Map<String, Object> response = new HashMap<>();
-        response.put("reviewList", reviews);
+        response.put("reviewList", reviewDTOS);
         response.put("currentPage", pageNum);
-        response.put("totalReviews", reviewList.getTotalElements());
-        response.put("totalPages", reviewList.getTotalPages());
+        response.put("totalReviews", pagedReview.getTotalElements());
+        response.put("totalPages", pagedReview.getTotalPages());
 
 
         return new ResponseEntity<>(response, HttpStatus.OK);

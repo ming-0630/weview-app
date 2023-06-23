@@ -32,6 +32,9 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5', 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 	implementation 'commons-io:commons-io:2.8.0'
 	implementation group: 'com.sun.activation', name: 'jakarta.activation', version: '1.2.1'
+	// https://mvnrepository.com/artifact/com.twilio.sdk/twilio
+	implementation group: 'com.twilio.sdk', name: 'twilio', version: '9.7.0'
+
 }
 
 tasks.named('test') {

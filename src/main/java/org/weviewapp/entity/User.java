@@ -30,6 +30,9 @@ public class User {
         @Column(name="password")
         private String password;
 
+        @Column(name="phone_num")
+        private String phoneNumber ;
+
         @Column(name="image_dir")
         private String profileImageDirectory;
 

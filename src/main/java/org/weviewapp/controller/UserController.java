@@ -1,5 +1,8 @@
 package org.weviewapp.controller;
 
+import com.twilio.Twilio;
+import com.twilio.rest.verify.v2.service.Verification;
+import com.twilio.rest.verify.v2.service.VerificationCheck;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -129,5 +132,57 @@ public class UserController {
         }
 
         return new ResponseEntity<>(user.get().getPoints(), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "/generateOTP")
+    public ResponseEntity<String> generateOTP(@RequestParam String phoneNumber){
+        User user = userService.getCurrentUser();
+        if (user.getIsVerified()) {
+            return new ResponseEntity<>("This user is already verified!", HttpStatus.OK);
+        }
+
+        Twilio.init(System.getenv("TWILIO_ACCOUNT_SID"), System.getenv("TWILIO_AUTH_TOKEN"));
+        Verification verification = Verification.creator(
+                        "VAb24b0931494348d7e59eef1e55c03f10", // this is your verification sid
+                        phoneNumber, //this is your Twilio verified recipient phone number
+                        "whatsapp") // this is your channel type
+                .create();
+
+        System.out.println(verification.getStatus());
+
+//        log.info("OTP has been successfully generated, and awaits your verification {}", LocalDateTime.now());
+
+        return new ResponseEntity<>("Your OTP has been sent to your verified phone number", HttpStatus.OK);
+    }
+
+    @GetMapping("/verifyOTP")
+    public ResponseEntity<?> verifyUserOTP(
+            @RequestParam String phoneNumber,
+            @RequestParam String code
+    ) throws Exception {
+        User user = userService.getCurrentUser();
+        if (user.getIsVerified()) {
+            return new ResponseEntity<>("This user is already verified!", HttpStatus.OK);
+        }
+        Twilio.init(System.getenv("TWILIO_ACCOUNT_SID"), System.getenv("TWILIO_AUTH_TOKEN"));
+        try {
+
+            VerificationCheck verificationCheck = VerificationCheck.creator(
+                            "VAb24b0931494348d7e59eef1e55c03f10")
+                    .setTo(phoneNumber)
+                    .setCode(code)
+                    .create();
+
+            System.out.println(verificationCheck.getStatus());
+            if (verificationCheck.getValid()) {
+                userService.verifyUser();
+                return new ResponseEntity<>("This user's verification has been completed successfully", HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>("Wrong OTP!", HttpStatus.OK);
+            }
+
+        } catch (Exception e) {
+            return new ResponseEntity<>("Verification failed.", HttpStatus.BAD_REQUEST);
+        }
     }
 }

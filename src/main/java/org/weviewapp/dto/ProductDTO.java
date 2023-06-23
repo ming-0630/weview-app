@@ -33,6 +33,7 @@ public class ProductDTO {
     // Details field
     private List<byte[]> images;
     private List<ReviewDTO> reviews;
+    private Integer totalReviewPage;
 
     // Uploaded field
     private List<MultipartFile> uploadedImages;

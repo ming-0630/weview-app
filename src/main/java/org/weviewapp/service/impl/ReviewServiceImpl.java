@@ -1,12 +1,13 @@
 package org.weviewapp.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.weviewapp.dto.ReviewDTO;
-import org.weviewapp.dto.UserDTO;
 import org.weviewapp.entity.Review;
 import org.weviewapp.entity.ReviewImage;
 import org.weviewapp.entity.User;
@@ -17,6 +18,7 @@ import org.weviewapp.repository.CommentRepository;
 import org.weviewapp.repository.ReviewRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.service.ReviewService;
+import org.weviewapp.service.UserService;
 import org.weviewapp.service.VoteService;
 import org.weviewapp.utils.ImageUtil;
 
@@ -36,6 +38,9 @@ public class ReviewServiceImpl implements ReviewService {
     UserRepository userRepository;
     @Autowired
     ReviewRepository reviewRepository;
+    @Autowired
+    UserService userService;
+
     @Override
     public List<ReviewDTO> mapToReviewDTO(List<Review> reviews) {
         List<ReviewDTO> list = new ArrayList<>();
@@ -67,25 +72,7 @@ public class ReviewServiceImpl implements ReviewService {
                 }
             }
 
-            // Get User details
-            UserDTO userDTO = new UserDTO();
-            userDTO.setId(review.getUser().getId());
-            userDTO.setUsername(review.getUser().getUsername());
-
-
-            if (!review.getUser().getProfileImageDirectory().isEmpty()) {
-                try {
-                    userDTO.setUserImage(
-                            ImageUtil.loadImage(
-                                    review.getUser().getProfileImageDirectory()
-                            )
-                    );
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            reviewDTO.setUser(userDTO);
+            reviewDTO.setUser(userService.mapUserToDTO(review.getUser()));
 
             // Retrieve ALL images from review
             List<byte[]> images = new ArrayList<>();
@@ -118,6 +105,29 @@ public class ReviewServiceImpl implements ReviewService {
                 throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Review not found");
             }
             reviewRepository.delete(review.get());
+            userService.modifyPoints(user.get().getId(), -100);
         }
+    }
+
+    @Override
+    public Page<Review> getReviewsByProductId(UUID productId, Pageable pageable) {
+        Page<Review> reviews = reviewRepository.findByProduct_ProductId(productId, pageable);
+        return reviews;
+    }
+    @Override
+    public Page<Review> getReviewsByProductIdSortByVotes(UUID productId, String sortDirection, Pageable pageable) {
+        Page<Review> reviews = reviewRepository.findByProductIdSortedByVoteDifference(productId, sortDirection, pageable);
+        return reviews;
+    }
+
+    @Override
+    public Page<Review> getReviewsByUserId(UUID userId, Pageable pageable) {
+        Page<Review> reviews = reviewRepository.findByUserId(userId, pageable);
+        return reviews;
+    }
+    @Override
+    public Page<Review> getReviewsByUserIdSortByVotes(UUID userId, String sortDirection, Pageable pageable) {
+        Page<Review> reviews = reviewRepository.findByUserIdSortedByVoteDifference(userId, sortDirection, pageable);
+        return reviews;
     }
 }

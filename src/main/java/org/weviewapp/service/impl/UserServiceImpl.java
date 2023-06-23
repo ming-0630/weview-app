@@ -23,20 +23,11 @@ public class UserServiceImpl implements UserService {
     UserRepository userRepository;
     @Override
     public User uploadUserImage(MultipartFile file) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            Optional<User> user = userRepository.findByEmail(authentication.getName());
-
-            if (user.isEmpty()) {
-                throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found! Please login again to continue");
-            }
+        User user = getCurrentUser();
             String newImgDir = ImageUtil.uploadImage(file, ImageCategory.PROFILE_IMG);
-            ImageUtil.deleteImage(user.get().getProfileImageDirectory());
-            user.get().setProfileImageDirectory(newImgDir);
-            return userRepository.save(user.get());
-        } else {
-            throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not authorized! Please login again to continue");
-        }
+            ImageUtil.deleteImage(user.getProfileImageDirectory());
+            user.setProfileImageDirectory(newImgDir);
+            return userRepository.save(user);
     };
 
     @Override
@@ -67,5 +58,26 @@ public class UserServiceImpl implements UserService {
             }
         }
         return userDTO;
+    }
+
+    @Override
+    public User verifyUser() {
+        User user = getCurrentUser();
+        user.setIsVerified(true);
+        return userRepository.save(user);
+    }
+    @Override
+    public User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            Optional<User> user = userRepository.findByEmail(authentication.getName());
+
+            if (user.isEmpty()) {
+                throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found! Please login again to continue");
+            }
+            return user.get();
+        } else {
+            throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not authorized! Please login again to continue");
+        }
     }
 }

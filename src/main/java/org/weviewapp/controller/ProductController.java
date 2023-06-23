@@ -14,6 +14,7 @@ import org.weviewapp.dto.ProductResponseDTO;
 import org.weviewapp.dto.ReviewDTO;
 import org.weviewapp.entity.Product;
 import org.weviewapp.entity.ProductImage;
+import org.weviewapp.entity.Review;
 import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.enums.ProductCategory;
 import org.weviewapp.exception.WeviewAPIException;
@@ -179,7 +180,11 @@ public class ProductController {
     }
 
     @GetMapping("/details")
-    public ResponseEntity<?> getProductDetails(@RequestParam String id) {
+    public ResponseEntity<?> getProductDetails(@RequestParam String id,
+                                               @RequestParam Integer reviewPageNum,
+                                               @RequestParam (defaultValue = "name") String reviewSortBy,
+                                               @RequestParam (defaultValue = "asc") String reviewDirection
+    ) {
 
         Optional<Product> product = productRepository
                 .findById(UUID.fromString(id));
@@ -212,9 +217,27 @@ public class ProductController {
         productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product.get()));
 
             if (product.get().getReviews().size() > 0) {
-                List<ReviewDTO> list = reviewService.mapToReviewDTO(product.get().getReviews());
-                list.sort(Comparator.comparing(ReviewDTO::getDate_created).reversed());
-                productDTO.setReviews(list);
+                List<Review> list = product.get().getReviews();
+                Sort.Direction sortDirection = Sort.Direction.ASC;
+
+                if(reviewDirection.equalsIgnoreCase("desc")) {
+                    sortDirection = Sort.Direction.DESC;
+                }
+
+                Pageable pageable;
+                Page<Review> pagedReview;
+                if (reviewSortBy.equals("votes")) {
+                    pageable = PageRequest.of(reviewPageNum - 1, 5);
+                    pagedReview = reviewService.getReviewsByProductIdSortByVotes(product.get().getProductId(), sortDirection.toString(), pageable);
+                } else {
+                    pageable = PageRequest.of(reviewPageNum - 1, 5, sortDirection, reviewSortBy);
+                    pagedReview = reviewService.getReviewsByProductId(product.get().getProductId(), pageable);
+                }
+
+                productDTO.setTotalReviewPage(pagedReview.getTotalPages());
+
+                List<ReviewDTO> reviewDTOS = reviewService.mapToReviewDTO(pagedReview.getContent());
+                productDTO.setReviews(reviewDTOS);
 
                 OptionalDouble averageRating = list
                         .stream()
