@@ -45,6 +45,7 @@ public class WebSecurityConfig {
                 .cors().and()
                 .authorizeHttpRequests((authorize) ->
                                         authorize
+                                                .requestMatchers("/api/principal/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET,"/api/product/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET,"/api/review/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET,"/api/user/**").permitAll()

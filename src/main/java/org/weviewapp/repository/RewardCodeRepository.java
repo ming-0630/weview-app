@@ -8,5 +8,5 @@ import java.util.UUID;
 
 public interface RewardCodeRepository extends JpaRepository<RewardCode, UUID> {
     public Optional<RewardCode> findFirstByUserIdIsNull();
-    public Integer countByUserIdIsNotNull();
+    public Integer countByUserIdIsNull();
 }

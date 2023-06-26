@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.weviewapp.dto.AddCodeDTO;
 import org.weviewapp.dto.RewardDTO;
 import org.weviewapp.entity.Reward;
 import org.weviewapp.repository.RewardRepository;
@@ -27,6 +28,22 @@ public class RewardController {
     public ResponseEntity<?> addReward(@ModelAttribute RewardDTO reward) {
         Reward r = rewardService.addReward(reward);
         return new ResponseEntity<>(r, HttpStatus.OK);
+    }
+    @PostMapping("/edit")
+    public ResponseEntity<?> editReward(@ModelAttribute RewardDTO reward) {
+        Reward r = rewardService.editReward(reward);
+        return new ResponseEntity<>(r, HttpStatus.OK);
+    }
+    @GetMapping("/getCodes")
+    public ResponseEntity<?> getCodes(@RequestParam String rewardId) {
+        return new ResponseEntity<>(rewardService.getCodes(UUID.fromString(rewardId)), HttpStatus.OK);
+    }
+
+    @PostMapping("/addCodes")
+    public ResponseEntity<?> addCodes(
+            @RequestBody AddCodeDTO dto) {
+        rewardService.addCodes(UUID.fromString(dto.getRewardId()), dto.getCodes());
+        return new ResponseEntity<>("Added successfully", HttpStatus.OK);
     }
 
     @PostMapping("/redeem")
