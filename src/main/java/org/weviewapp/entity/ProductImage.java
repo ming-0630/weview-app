@@ -17,10 +17,10 @@ public class ProductImage {
     private @Getter
     @Setter UUID id;
 
-    @JsonBackReference
+    @JsonBackReference(value="product-productImage")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
 

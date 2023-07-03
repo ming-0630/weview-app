@@ -1,6 +1,7 @@
 package org.weviewapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
@@ -24,10 +25,10 @@ public class Review {
     @Column(name="review_id")
     private UUID id;
 
-    @JsonBackReference
+    @JsonBackReference(value="product-review")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
 
@@ -43,32 +44,41 @@ public class Review {
     @Column(name="description", columnDefinition = "TEXT")
     private String description;
 
-    @JsonManagedReference
+    @JsonManagedReference(value = "review-vote")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @Nullable
-    @OneToMany(mappedBy = "review")
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL)
     private List<Vote> votes = new ArrayList<>();
 
-    @JsonManagedReference
+    @JsonManagedReference(value = "review-comment")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @Nullable
-    @OneToMany(mappedBy = "review")
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL)
     private List<Comment> comments = new ArrayList<>();
 
-    @JsonManagedReference
+    @JsonManagedReference(value = "review-reviewImage")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @Nullable
-    @OneToMany(mappedBy = "review", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL)
     private List<ReviewImage> images = new ArrayList<>();
 
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private User user;
 
-//    private boolean deleted = Boolean.FALSE;
+    @OneToOne(cascade = CascadeType.DETACH, orphanRemoval = true)
+    @JoinColumn(name = "report_id", referencedColumnName = "report_id")
+    @Nullable
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @JsonIgnore
+    private Report report;
+
+    @Column(name="is_verified")
+    private boolean isVerified;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date_created", nullable = false)

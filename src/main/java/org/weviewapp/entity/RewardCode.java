@@ -18,17 +18,17 @@ public class RewardCode {
     @GeneratedValue
     private UUID id;
 
-    @JsonBackReference
+    @JsonBackReference(value = "reward-rewardCode")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @Nullable
     @JoinColumn(name = "reward_id")
     private Reward reward;
 
     private String encryptedCode;
 
-    @JsonBackReference
+    @JsonBackReference(value = "user-rewardCode")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @ManyToOne

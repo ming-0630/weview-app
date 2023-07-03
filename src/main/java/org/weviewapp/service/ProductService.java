@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface ProductService {
     List<ProductDTO> mapToPreviewDTO(List<Product> product);
-
+    ProductDTO mapToEditProductDTO(Product product);
 }

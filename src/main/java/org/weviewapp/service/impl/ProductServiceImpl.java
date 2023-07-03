@@ -5,11 +5,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.entity.Product;
+import org.weviewapp.entity.ProductImage;
 import org.weviewapp.entity.Review;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.service.ProductService;
+import org.weviewapp.service.ReviewService;
 import org.weviewapp.service.WatchlistService;
 import org.weviewapp.utils.ImageUtil;
 
@@ -25,6 +27,8 @@ public class ProductServiceImpl implements ProductService {
     private UserRepository userRepository;
     @Autowired
     private WatchlistService watchlistService;
+    @Autowired
+    private ReviewService reviewService;
 
     @Override
     public List<ProductDTO> mapToPreviewDTO(List<Product> products) {
@@ -42,6 +46,8 @@ public class ProductServiceImpl implements ProductService {
                 throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
             }
 
+            List<Review> list = reviewService.getAllReviewsByProductId(product.getProductId());
+
             productDTO.setProductId(product.getProductId());
             productDTO.setName(product.getName());
             productDTO.setCategory(product.getCategory());
@@ -49,13 +55,14 @@ public class ProductServiceImpl implements ProductService {
             productDTO.setDescription(product.getDescription());
             productDTO.setDate_created(product.getCreated());
             productDTO.setDate_updated(product.getUpdated());
-            productDTO.setRatingCount(product.getReviews().size());
             productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product));
 
             // Used for non-detailed product getting
-            if (product.getReviews().size() > 0) {
+            if (!list.isEmpty()) {
+                productDTO.setRatingCount(list.size());
+
                 List<Integer> rating = new ArrayList<>();
-                for (Review review : product.getReviews()) {
+                for (Review review : list) {
                     rating.add(review.getRating());
                 }
 
@@ -70,5 +77,33 @@ public class ProductServiceImpl implements ProductService {
             productDTOList.add(productDTO);
         }
         return productDTOList;
+    }
+
+    @Override
+    public ProductDTO mapToEditProductDTO(Product product) {
+        ProductDTO productDTO = new ProductDTO();
+
+        try {
+            if (product.getImages() != null) {
+                List<byte[]> images = new ArrayList<>();
+                for (ProductImage img : product.getImages()) {
+                    byte[] file = ImageUtil.loadImage(img.getImageDirectory());
+                    images.add(file);
+                }
+                productDTO.setImages(images);
+            }
+        } catch (Exception e) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+
+        productDTO.setProductId(product.getProductId());
+        productDTO.setName(product.getName());
+        productDTO.setCategory(product.getCategory());
+        productDTO.setReleaseYear(product.getReleaseYear());
+        productDTO.setDescription(product.getDescription());
+        productDTO.setDate_created(product.getCreated());
+        productDTO.setDate_updated(product.getUpdated());
+
+        return productDTO;
     }
 }

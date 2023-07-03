@@ -34,7 +34,8 @@ dependencies {
 	implementation group: 'com.sun.activation', name: 'jakarta.activation', version: '1.2.1'
 	// https://mvnrepository.com/artifact/com.twilio.sdk/twilio
 	implementation group: 'com.twilio.sdk', name: 'twilio', version: '9.7.0'
-
+	// https://mvnrepository.com/artifact/com.google.code.gson/gson
+	implementation group: 'com.google.code.gson', name: 'gson', version: '2.7'
 }
 
 tasks.named('test') {

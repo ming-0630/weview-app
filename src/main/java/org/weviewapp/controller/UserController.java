@@ -22,9 +22,7 @@ import org.weviewapp.entity.Watchlist;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.repository.WatchlistRepository;
-import org.weviewapp.service.ProductService;
-import org.weviewapp.service.UserService;
-import org.weviewapp.service.WatchlistService;
+import org.weviewapp.service.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,9 +34,13 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
     @Autowired
+    private WatchlistRepository watchlistRepository;
+    @Autowired
     private UserService userService;
     @Autowired
-    private WatchlistRepository watchlistRepository;
+    private VoteService voteService;
+    @Autowired
+    private ReviewService reviewService;
     @Autowired
     private ProductService productService;
     @Autowired
@@ -58,6 +60,20 @@ public class UserController {
         } else {
             throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not authorized! Please login again to continue");
         }
+    }
+    @GetMapping("/getUserProfile")
+    public ResponseEntity<?> getUserProfile(@RequestParam String userId) {
+        Optional<User> user = userRepository.findById(UUID.fromString(userId));
+
+        if (user.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found!");
+        }
+        UserDTO userDTO = userService.mapUserToDTO(user.get());
+        userDTO.setReviews(reviewService.mapToReviewDTO(
+                reviewService.getAllReviewsByUserId(UUID.fromString(userId))));
+        userDTO.setTotalUpvotes(voteService.getUserTotalUpvotes(user.get().getId()));
+        userDTO.setTotalDownvotes(voteService.getUserTotalDownvotes(user.get().getId()));
+        return new ResponseEntity<>(userDTO, HttpStatus.OK);
     }
     @GetMapping("/watchlist")
     public ResponseEntity<?> getWatchlist(
@@ -138,7 +154,11 @@ public class UserController {
     public ResponseEntity<String> generateOTP(@RequestParam String phoneNumber){
         User user = userService.getCurrentUser();
         if (user.getIsVerified()) {
-            return new ResponseEntity<>("This user is already verified!", HttpStatus.OK);
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "User is already verified!");
+        }
+
+        if (userService.phoneNumExist(phoneNumber)) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Phone number exists!");
         }
 
         Twilio.init(System.getenv("TWILIO_ACCOUNT_SID"), System.getenv("TWILIO_AUTH_TOKEN"));
@@ -150,8 +170,6 @@ public class UserController {
 
         System.out.println(verification.getStatus());
 
-//        log.info("OTP has been successfully generated, and awaits your verification {}", LocalDateTime.now());
-
         return new ResponseEntity<>("Your OTP has been sent to your verified phone number", HttpStatus.OK);
     }
 
@@ -162,7 +180,7 @@ public class UserController {
     ) throws Exception {
         User user = userService.getCurrentUser();
         if (user.getIsVerified()) {
-            return new ResponseEntity<>("This user is already verified!", HttpStatus.OK);
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "User is already verified!");
         }
         Twilio.init(System.getenv("TWILIO_ACCOUNT_SID"), System.getenv("TWILIO_AUTH_TOKEN"));
         try {

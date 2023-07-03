@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -51,8 +52,16 @@ public class RewardController {
         return new ResponseEntity<>(rewardService.redeemReward(UUID.fromString(rewardId)), HttpStatus.OK);
     }
     @GetMapping("/getRewards")
-    public ResponseEntity<?> getRewards(@RequestParam Integer pageNum) {
-        Pageable pageable = PageRequest.of(pageNum - 1, 10);
+    public ResponseEntity<?> getRewards(@RequestParam Integer pageNum,
+                                        @RequestParam (defaultValue = "name") String sortBy,
+                                        @RequestParam (defaultValue = "asc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.ASC;
+
+        if(direction.equalsIgnoreCase("desc")) {
+            sortDirection = Sort.Direction.DESC;
+        }
+
+        Pageable pageable = PageRequest.of(pageNum - 1, 10, sortDirection, sortBy);
         Page<Reward> r = rewardRepository.findAll(pageable);
 
         List<RewardDTO> dto = new ArrayList<>();

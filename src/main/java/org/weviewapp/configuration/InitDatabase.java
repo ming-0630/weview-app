@@ -8,9 +8,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.weviewapp.entity.*;
 import org.weviewapp.enums.ProductCategory;
-import org.weviewapp.repository.ProductRepository;
-import org.weviewapp.repository.RoleRepository;
-import org.weviewapp.repository.UserRepository;
+import org.weviewapp.repository.*;
+import org.weviewapp.utils.EncryptionUtil;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,16 +26,28 @@ public class InitDatabase implements CommandLineRunner {
     UserRepository userRepository;
     @Autowired
     ProductRepository productRepository;
+    @Autowired
+    RewardRepository rewardRepository;
+    @Autowired
+    ReportReasonRepository reportReasonRepository;
+    @Autowired
+    private EncryptionUtil encryptionUtil;
     @Override
     public void run(String... args) throws Exception {
-
-
+        Random random = new Random();
         // Initialize Role
         if (roleRepository.count() <= 0) {
                 log.info("Initializing roles");
                 log.info("Preloading " + roleRepository.save(Role.builder().name("ROLE_USER").build()));
                 log.info("Preloading " + roleRepository.save(Role.builder().name("ROLE_ADMIN").build()));
                 log.info("Preloading " + roleRepository.save(Role.builder().name("ROLE_BUSINESS").build()));
+        }
+
+        if (reportReasonRepository.count() <= 0) {
+            log.info("Initializing reportReasons");
+            log.info("Preloading " + reportReasonRepository.save(ReportReason.builder().name("FAKE").build()));
+            log.info("Preloading " + reportReasonRepository.save(ReportReason.builder().name("IMAGE").build()));
+            log.info("Preloading " + reportReasonRepository.save(ReportReason.builder().name("IRRELEVANT").build()));
         }
 
         // Initialize User
@@ -49,7 +60,6 @@ public class InitDatabase implements CommandLineRunner {
         if (productRepository.count() <= 0) {
             log.info("Initializing products");
             ProductCategory[] categories = ProductCategory.values();
-            Random random = new Random();
             for(int i = 0; i <= 50; i++) {
                 Product p = new Product();
 
@@ -127,7 +137,27 @@ public class InitDatabase implements CommandLineRunner {
             }
             log.info("Preloaded random 50 products");
         }
+        if (rewardRepository.count() <= 0) {
+            // Initialize Reward
+            for(int i = 0; i < random.nextInt(5); i++) {
+                Reward newReward = new Reward();
+                newReward.setId(UUID.randomUUID());
+                char c = (char)(random.nextInt(26) + 'a');
+                newReward.setName(c + ": Reward " + i);
+                newReward.setPoints(random.nextInt(10000));
+                newReward.setImageDir("razer_logo.png");
+
+                for(int j = 0; j<= random.nextInt(10); j++) {
+                    RewardCode rc = new RewardCode();
+                    rc.setId(UUID.randomUUID());
+                    rc.setEncryptedCode(encryptionUtil.encrypt("WWW1231"));
+                    rc.setReward(newReward);
+                    newReward.getRewardCodeList().add(rc);
+                }
+                rewardRepository.save(newReward);
+            }
         }
+    }
 
         private void createUsers() {
             log.info("Preloading users");
@@ -144,6 +174,21 @@ public class InitDatabase implements CommandLineRunner {
                     false,
                     0,
                     Set.of(userRole, adminRole),
+                    new ArrayList<Vote>(),
+                    new ArrayList<Comment>(),
+                    new ArrayList<RewardCode>()
+            ));
+
+            userRepository.save(new User(
+                    UUID.randomUUID(),
+                    "ML",
+                    "ML Helper",
+                    "$2a$12$Tg/wZsB6nBJIelVzo3SebeCg.MFQlegT6/F2Naa9S5vcW3JTibLdO",
+                    "",
+                    "",
+                    true,
+                    0,
+                    Set.of(adminRole),
                     new ArrayList<Vote>(),
                     new ArrayList<Comment>(),
                     new ArrayList<RewardCode>()
@@ -178,6 +223,7 @@ public class InitDatabase implements CommandLineRunner {
             r.setPrice(BigDecimal.valueOf(random.nextDouble(1000)));
             r.setRating(random.nextInt(2, 6));
             r.setUser(u);
+            r.setVerified(true);
 
             int minDay = (int) LocalDate.of(2020, 1, 1).toEpochDay();
             int maxDay = (int) LocalDate.of(2023, 1, 1).toEpochDay();
@@ -198,5 +244,5 @@ public class InitDatabase implements CommandLineRunner {
             u.setPoints(u.getPoints() + 100);
             userRepository.save(u);
             return r;
-        };
+        }
 }

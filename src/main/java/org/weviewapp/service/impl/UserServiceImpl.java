@@ -28,7 +28,7 @@ public class UserServiceImpl implements UserService {
         ImageUtil.deleteImage(user.getProfileImageDirectory());
         user.setProfileImageDirectory(newImgDir);
         return userRepository.save(user);
-    };
+    }
 
     @Override
     public User modifyPoints(UUID userId, Integer points) {
@@ -66,6 +66,10 @@ public class UserServiceImpl implements UserService {
         User user = getCurrentUser();
         user.setIsVerified(true);
         return userRepository.save(user);
+    }
+    @Override
+    public Boolean phoneNumExist(String phoneNum) {
+        return userRepository.existsByPhoneNumber(phoneNum);
     }
     @Override
     public User getCurrentUser() {

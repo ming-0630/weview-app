@@ -23,6 +23,7 @@ public class ReviewDTO {
     private Integer votes;
     private VoteType currentUserVote;
     private Integer commentCount;
+    private boolean isVerified;
 
     // When add
     private UUID productId;
@@ -33,4 +34,5 @@ public class ReviewDTO {
     private UserDTO user;
     private Product product;
     private List<byte[]> images;
+    private UUID reportId;
 }

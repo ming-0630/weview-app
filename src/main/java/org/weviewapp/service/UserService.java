@@ -7,9 +7,10 @@ import org.weviewapp.entity.User;
 import java.util.UUID;
 
 public interface UserService {
-    public User uploadUserImage(MultipartFile file);
-    public User modifyPoints(UUID userId, Integer points);
-    public User verifyUser();
-    public User getCurrentUser();
-    public UserDTO mapUserToDTO(User user);
+    User uploadUserImage(MultipartFile file);
+    User modifyPoints(UUID userId, Integer points);
+    User verifyUser();
+    Boolean phoneNumExist(String phoneNum);
+    User getCurrentUser();
+    UserDTO mapUserToDTO(User user);
 }

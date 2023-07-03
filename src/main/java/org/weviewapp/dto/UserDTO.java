@@ -14,6 +14,9 @@ public class UserDTO {
     private Boolean isVerified;
     private Integer points;
     private List<String> role;
+    private List<ReviewDTO> reviews;
+    private Integer totalUpvotes;
+    private Integer totalDownvotes;
 
     // For upload
     private MultipartFile uploadedImage;

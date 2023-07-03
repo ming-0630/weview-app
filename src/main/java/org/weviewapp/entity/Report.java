@@ -1,49 +1,43 @@
 package org.weviewapp.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
+import org.weviewapp.enums.ReportAction;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
 @Entity
 @Data
-@Table(name="comment")
+@Table(name="report")
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class Comment {
+public class Report {
     @Id
-    @Column(name="comment_id")
+    @Column(name="report_id")
     private UUID id;
 
-    @Column(name="text")
-    private String text;
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
+    @JoinTable(name = "report_report_reasons",
+            joinColumns = @JoinColumn(name = "report_id", referencedColumnName = "report_id"),
+            inverseJoinColumns = @JoinColumn(name = "report_reason_id", referencedColumnName = "id"))
+    private List<ReportReason> reportReasons;
 
-    @JsonManagedReference(value = "comment-vote")
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @Nullable
-    @OneToMany(mappedBy = "comment")
-    private List<Vote> votes = new ArrayList<>();
+    @Column(name="description")
+    private String description;
 
-    @JsonBackReference(value = "review-comment")
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @ManyToOne
-    @JoinColumn(name = "review_id")
+    @OneToOne
+    @JoinColumn(name = "review_id", referencedColumnName = "review_id")
     private Review review;
 
-    @JsonBackReference(value = "user-comment")
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
     @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @JoinColumn(name = "user_id", referencedColumnName = "user_id")
+    private User reporter;
+
+    @Column(name="action")
+    private ReportAction action;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date_created", nullable = false)

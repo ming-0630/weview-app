@@ -18,7 +18,7 @@ public class Vote {
     @Column(name="vote_id")
     private UUID id;
 
-    @JsonBackReference
+    @JsonBackReference(value = "review-vote")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @ManyToOne
@@ -26,7 +26,7 @@ public class Vote {
     @JoinColumn(name = "review_id")
     private Review review;
 
-    @JsonBackReference
+    @JsonBackReference(value = "comment-vote")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @ManyToOne
@@ -34,7 +34,7 @@ public class Vote {
     @JoinColumn(name = "comment_id")
     private Comment comment;
 
-    @JsonBackReference
+    @JsonBackReference(value = "user-vote")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @ManyToOne

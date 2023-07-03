@@ -52,14 +52,14 @@ public class Product {
         updated = new Date();
     }
 
-    @JsonManagedReference
+    @JsonManagedReference(value = "product-productImage")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @Nullable
-    @OneToMany(mappedBy = "product", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();
 
-    @OneToMany(mappedBy = "product", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Nullable
     private List<Review> reviews = new ArrayList<>();
 }

@@ -15,10 +15,7 @@ import org.weviewapp.dto.ReviewDTO;
 import org.weviewapp.entity.*;
 import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.exception.WeviewAPIException;
-import org.weviewapp.repository.CommentRepository;
-import org.weviewapp.repository.ProductRepository;
-import org.weviewapp.repository.ReviewRepository;
-import org.weviewapp.repository.UserRepository;
+import org.weviewapp.repository.*;
 import org.weviewapp.service.CommentService;
 import org.weviewapp.service.ReviewService;
 import org.weviewapp.service.UserService;
@@ -26,6 +23,7 @@ import org.weviewapp.service.VoteService;
 import org.weviewapp.utils.ImageUtil;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @RestController
@@ -49,6 +47,11 @@ public class ReviewController {
     ReviewService reviewService;
     @Autowired
     CommentService commentService;
+    @Autowired
+    ReportReasonRepository reportReasonRepository;
+    @Autowired
+    ReportRepository reportRepository;
+
     @PostMapping("/add")
     public ResponseEntity<?> addReview(@ModelAttribute ReviewDTO reviewDTO) {
         //Check if user exists
@@ -56,8 +59,33 @@ public class ReviewController {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "User already has a review for this product!");
         }
 
+        // perform checking
         Review review = new Review();
         review.setId(UUID.randomUUID());
+
+        List<String> imagesBase64 =  new ArrayList<>();
+        if (reviewDTO.getUploadedImages() != null) {
+            int i = 0;
+            for (MultipartFile image: reviewDTO.getUploadedImages()) {
+                i++;
+                try {
+                    byte[] fileBytes = image.getBytes();
+                    String base64Bytes = Base64.getEncoder().encodeToString(fileBytes);
+                    imagesBase64.add(base64Bytes);
+
+                    ReviewImage newImage = new ReviewImage();
+                    newImage.setId(UUID.randomUUID());
+                    newImage.setReview(review);
+
+                    String imgDir = ImageUtil.uploadImage(image, ImageCategory.REVIEW_IMG);
+                    newImage.setImageDirectory(imgDir);
+                    review.getImages().add(newImage);
+                } catch (Exception ex) {
+                    throw new WeviewAPIException(HttpStatus.BAD_REQUEST, ex.getMessage());
+                }
+            }
+        }
+
         review.setRating(reviewDTO.getRating());
         review.setPrice(reviewDTO.getPrice());
         review.setTitle(reviewDTO.getTitle());
@@ -77,23 +105,12 @@ public class ReviewController {
         }
 
         review.setUser(user.get());
-
-        if (reviewDTO.getUploadedImages() != null) {
-            for (MultipartFile image: reviewDTO.getUploadedImages()) {
-                ReviewImage newImage = new ReviewImage();
-                newImage.setId(UUID.randomUUID());
-                newImage.setReview(review);
-
-                String imgDir = ImageUtil.uploadImage(image, ImageCategory.REVIEW_IMG);
-                newImage.setImageDirectory(imgDir);
-                review.getImages().add(newImage);
-            }
-        }
-
-
+        review.setVerified(false);
         Review addedReview = reviewRepository.save(review);
-
         userService.modifyPoints(user.get().getId(), 100);
+
+        // Async call
+        reviewService.reviewVerify(imagesBase64, addedReview);
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Added successfully!");
         response.put("review", addedReview);
@@ -148,7 +165,9 @@ public class ReviewController {
 
         LocalDateTime startDate = LocalDateTime.now().minusDays(30);
 
-        Optional<List<Review>> historicalReviews = reviewRepository.findByProduct_ProductIdAndDateCreatedBeforeOrderByDateCreated(UUID.fromString(productId), startDate);
+        Optional<List<Review>> historicalReviews =
+                reviewRepository.findByIsVerifiedIsTrueAndReportIsNullAndDateCreatedBeforeAndProduct_ProductIdOrderByDateCreated(
+                        startDate, UUID.fromString(productId));
 
         double initialRating = calculateInitialRating(historicalReviews.get());
         Integer numberOfElements = historicalReviews.get().size();
@@ -172,7 +191,9 @@ public class ReviewController {
         LocalDateTime endDate = LocalDateTime.now();
         LocalDateTime startDate = LocalDateTime.now().minusDays(365);
 
-        Optional<List<Review>> historicalReviews = reviewRepository.findByProduct_ProductIdAndDateCreatedBeforeOrderByDateCreated(UUID.fromString(productId), startDate);
+        Optional<List<Review>> historicalReviews =
+                reviewRepository.findByIsVerifiedIsTrueAndReportIsNullAndDateCreatedBeforeAndProduct_ProductIdOrderByDateCreated(
+                        startDate, UUID.fromString(productId));
 
         double initialRating = calculateInitialRating(historicalReviews.get());
         Integer numberOfElements = historicalReviews.get().size();
@@ -194,7 +215,15 @@ public class ReviewController {
     public ResponseEntity<?> getRatingMax(@RequestParam String productId) {
 
         LocalDateTime endDate = LocalDateTime.now();
-        LocalDateTime startDate = reviewRepository.findFirstByProduct_ProductIdOrderByDateCreatedAsc(UUID.fromString(productId)).get().getDateCreated();
+        LocalDateTime startDate;
+
+        Optional<Review> r = reviewRepository.findFirstByIsVerifiedIsTrueAndReportIsNullAndProduct_ProductIdOrderByDateCreatedAsc(UUID.fromString(productId));
+
+        if (r.isEmpty()) {
+            startDate = LocalDateTime.now().minusDays(1);
+        } else {
+             startDate = r.get().getDateCreated();
+        }
 
         List<RatingData> ratingDataList = getRatingDataList(
                 startDate,
@@ -358,24 +387,36 @@ public class ReviewController {
                                                String productId,
                                                Double initialRating,
                                                Integer numberOfElements) {
+
         Optional<List<Review>> reviews = reviewRepository.
-                findByProduct_ProductIdAndDateCreatedBetweenOrderByDateCreated(UUID.fromString(productId), startDate, endDate);
+                findByIsVerifiedIsTrueAndReportIsNullAndDateCreatedBetweenAndProduct_ProductIdOrderByDateCreated(startDate, endDate, UUID.fromString(productId));
 
         List<RatingData> ratingDataList = new ArrayList<>();
 
         double currentRating = initialRating;
 
+        long hoursBetween = ChronoUnit.HOURS.between(startDate, endDate);
+        long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
+
+        if (hoursBetween < 24 && daysBetween < 1) {
+            startDate = startDate.minusDays(1);
+        }
+
         for (LocalDateTime date = startDate; date.isBefore(endDate) || date.isEqual(endDate); date = date.plusDays(1)) {
-
-            for (Review review : reviews.get()) {
-                if (review.getDateCreated().toLocalDate().isEqual(date.toLocalDate())) {
-                    currentRating = ((currentRating * numberOfElements) + review.getRating()) / (numberOfElements + 1);
-                    numberOfElements++;
+            if (reviews.isEmpty()) {
+                RatingData ratingData = new RatingData(date, currentRating);
+                ratingDataList.add(ratingData);
+            } else {
+                for (Review review : reviews.get()) {
+                    if (review.getDateCreated().toLocalDate().isEqual(date.toLocalDate())) {
+                        currentRating = ((currentRating * numberOfElements) + review.getRating()) / (numberOfElements + 1);
+                        numberOfElements++;
+                    }
                 }
-            }
 
-            RatingData ratingData = new RatingData(date, currentRating);
-            ratingDataList.add(ratingData);
+                RatingData ratingData = new RatingData(date, currentRating);
+                ratingDataList.add(ratingData);
+            }
         }
         return ratingDataList;
     }

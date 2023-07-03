@@ -16,10 +16,10 @@ public class ReviewImage {
     @Column(name="review_image_id")
     private UUID id;
 
-    @JsonBackReference
+    @JsonBackReference(value="review-reviewImage")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "review_id")
     private Review review;
 

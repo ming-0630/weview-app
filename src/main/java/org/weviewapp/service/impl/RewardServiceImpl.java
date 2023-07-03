@@ -173,7 +173,7 @@ public class RewardServiceImpl implements RewardService {
         dto.setName(reward.getName());
         dto.setId(reward.getId());
         dto.setPoints(reward.getPoints());
-        dto.setCodeCount(rewardCodeRepository.countByUserIdIsNull());
+        dto.setCodeCount(rewardCodeRepository.countByRewardIdAndUserIdIsNull(reward.getId()));
 
         try {
             dto.setImage(ImageUtil.loadImage(reward.getImageDir()));

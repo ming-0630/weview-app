@@ -24,7 +24,7 @@ public class Reward {
     private String name;
     private int points;
 
-    @JsonManagedReference
+    @JsonManagedReference(value="reward-rewardCode")
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @Nullable

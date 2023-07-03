@@ -48,21 +48,21 @@ public class User {
                 inverseJoinColumns = @JoinColumn(name = "role_id", referencedColumnName = "id"))
         private Set<Role> roles;
 
-        @JsonManagedReference
+        @JsonManagedReference(value = "user-vote")
         @EqualsAndHashCode.Exclude
         @ToString.Exclude
         @Nullable
         @OneToMany(mappedBy = "user")
         private List<Vote> votes = new ArrayList<>();
 
-        @JsonManagedReference
+        @JsonManagedReference(value = "user-comment")
         @EqualsAndHashCode.Exclude
         @ToString.Exclude
         @Nullable
         @OneToMany(mappedBy = "user")
         private List<Comment> comments = new ArrayList<>();
 
-        @JsonManagedReference
+        @JsonManagedReference(value = "user-rewardCode")
         @EqualsAndHashCode.Exclude
         @ToString.Exclude
         @Nullable

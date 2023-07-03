@@ -7,12 +7,11 @@ import org.weviewapp.enums.VoteType;
 import java.util.UUID;
 
 public interface VoteService {
-    public Vote vote(VoteOn voteOn, UUID id, UUID userId, VoteType voteType);
-
-    public VoteType getCurrentUserVote(VoteOn voteOn, UUID id, UUID userId);
-
-    public int getTotalUpvotes(VoteOn voteOn, UUID id);
-
-    public int getTotalDownvotes(VoteOn voteOn, UUID id);
+    Vote vote(VoteOn voteOn, UUID id, UUID userId, VoteType voteType);
+    VoteType getCurrentUserVote(VoteOn voteOn, UUID id, UUID userId);
+    int getTotalUpvotes(VoteOn voteOn, UUID id);
+    int getTotalDownvotes(VoteOn voteOn, UUID id);
+    int getUserTotalUpvotes(UUID userId);
+    int getUserTotalDownvotes(UUID userId);
 
 }

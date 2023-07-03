@@ -5,6 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.weviewapp.enums.ProductCategory;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.Date;
 import java.util.List;
@@ -34,6 +35,10 @@ public class ProductDTO {
     private List<byte[]> images;
     private List<ReviewDTO> reviews;
     private Integer totalReviewPage;
+    private ReviewDTO unverifiedReview;
+    private LocalDateTime reviewStartDate;
+    private LocalDateTime reviewEndDate;
+    private List<Number> ratings;
 
     // Uploaded field
     private List<MultipartFile> uploadedImages;

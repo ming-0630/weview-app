@@ -8,8 +8,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface VoteRepository extends JpaRepository<Vote, UUID> {
-    public Optional<Vote> findByReview_IdAndUserId(UUID reviewId, UUID userId);
-    public Optional<Vote> findByComment_IdAndUserId(UUID commentId, UUID userId);
-    public int countByReviewIdAndVoteType(UUID reviewId, VoteType type);
-    public int countByCommentIdAndVoteType(UUID commentId, VoteType type);
+    Optional<Vote> findByReview_IdAndUserId(UUID reviewId, UUID userId);
+    Optional<Vote> findByComment_IdAndUserId(UUID commentId, UUID userId);
+    int countByReviewIdAndVoteType(UUID reviewId, VoteType type);
+    int countByCommentIdAndVoteType(UUID commentId, VoteType type);
+    int countByReview_UserIdAndVoteType(UUID userId, VoteType type);
 }

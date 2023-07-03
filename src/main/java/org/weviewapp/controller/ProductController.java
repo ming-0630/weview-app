@@ -19,12 +19,10 @@ import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.enums.ProductCategory;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.CommentRepository;
+import org.weviewapp.repository.ProductImageRepository;
 import org.weviewapp.repository.ProductRepository;
 import org.weviewapp.repository.UserRepository;
-import org.weviewapp.service.ProductService;
-import org.weviewapp.service.ReviewService;
-import org.weviewapp.service.VoteService;
-import org.weviewapp.service.WatchlistService;
+import org.weviewapp.service.*;
 import org.weviewapp.utils.ImageUtil;
 
 import java.math.BigDecimal;
@@ -35,7 +33,7 @@ import java.util.*;
 @CrossOrigin
 @RequestMapping("/api/product")
 public class ProductController {
-    private static final int ITEMS_PER_PAGE = 5;
+    private static final int ITEMS_PER_PAGE = 10;
     @Autowired
     private ProductRepository productRepository;
     @Autowired
@@ -45,17 +43,21 @@ public class ProductController {
     @Autowired
     private CommentRepository commentRepository;
     @Autowired
+    private ProductImageRepository productImageRepository;
+    @Autowired
     private VoteService voteService;
     @Autowired
     private ReviewService reviewService;
     @Autowired
     private WatchlistService watchlistService;
+    @Autowired
+    private UserService userService;
 
     @PostMapping("/add")
     public ResponseEntity<?> addProduct(@ModelAttribute ProductDTO productDto) {
         // add check for username exists in database
-        if(productRepository.existsByName(productDto.getName())){
-            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Product Name exists");
+        if(!productRepository.findByName(productDto.getName()).isEmpty()){
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Product Name exists!");
         }
 
         Product product = new Product();
@@ -64,6 +66,10 @@ public class ProductController {
         product.setCategory(productDto.getCategory());
         product.setReleaseYear(productDto.getReleaseYear());
         product.setDescription(productDto.getDescription());
+
+        if(productDto.getUploadedImages().isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No images attached!");
+        }
 
         for (MultipartFile image: productDto.getUploadedImages()) {
             ProductImage newImage = new ProductImage();
@@ -84,6 +90,60 @@ public class ProductController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @PostMapping("/edit")
+    public ResponseEntity<?> editProduct(@ModelAttribute ProductDTO productDto) {
+        // add check for username exists in database
+        List<Product> products = productRepository.findByName(productDto.getName());
+        if(!products.isEmpty()){
+            boolean nameExists = products.stream()
+                    .anyMatch(product -> product.getName().equals(productDto.getName()) && !product.getProductId().equals(productDto.getProductId()));
+
+            if (nameExists) {
+                throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Product Name exists!");
+            }
+        }
+
+        Optional<Product> product = productRepository.findById(productDto.getProductId());
+        if (product.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find product!");
+        }
+
+        product.get().setName(productDto.getName());
+        product.get().setCategory(productDto.getCategory());
+        product.get().setReleaseYear(productDto.getReleaseYear());
+        product.get().setDescription(productDto.getDescription());
+
+        if(productDto.getUploadedImages().isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No images attached!");
+        }
+
+        // Clear prev images
+        if (!product.get().getImages().isEmpty()) {
+            for (ProductImage image: product.get().getImages()) {
+                ImageUtil.deleteImage(image.getImageDirectory());
+            }
+            product.get().getImages().clear();
+        }
+
+        for (MultipartFile image: productDto.getUploadedImages()) {
+            ProductImage newImage = new ProductImage();
+            newImage.setId(UUID.randomUUID());
+            newImage.setProduct(product.get());
+
+            String imgDir = ImageUtil.uploadImage(image, ImageCategory.PRODUCT_IMG);
+            newImage.setImageDirectory(imgDir);
+            product.get().getImages().add(newImage);
+        }
+
+        Product addedProduct = productRepository.save(product.get());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Edited successfully!");
+        response.put("product", addedProduct);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @GetMapping("/getAllPreview")
     public ResponseEntity<?> getAllPreview(@RequestParam (defaultValue = "0") Integer pageNum,
                                            @RequestParam (defaultValue = "name") String sortBy,
@@ -95,10 +155,21 @@ public class ProductController {
             sortDirection = Sort.Direction.DESC;
         }
 
-        // Pageable starts page at 0, while front end starts at 1
-        Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE, sortDirection, sortBy);
+        Page<Product> productList = null;
+        if (sortBy.equals("rating")) {
+            Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE);
 
-        Page<Product> productList = productRepository.findAll(pageable);
+            if(sortDirection.isAscending()) {
+                productList = productRepository.findAllByOrderByAverageRatingAsc(pageable);
+            } else {
+                productList = productRepository.findAllByOrderByAverageRatingDesc(pageable);
+            }
+
+        } else {
+            // Pageable starts page at 0, while front end starts at 1
+            Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE, sortDirection, sortBy);
+           productList = productRepository.findAll(pageable);
+        }
 
         if (productList.isEmpty()) {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No products found!");
@@ -114,6 +185,28 @@ public class ProductController {
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
+    @GetMapping("/getAllUnpaged")
+    public ResponseEntity<?> getAllUnpaged() {
+
+        List<Product> productList = productRepository.findAll();
+        if (productList.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No products found!");
+        }
+
+        return new ResponseEntity<>(productService.mapToPreviewDTO(productList), HttpStatus.OK);
+    }
+
+    @GetMapping("/getProductToEdit")
+    public ResponseEntity<?> getOneProduct(@RequestParam String productId) {
+
+        Optional<Product> product = productRepository.findById(UUID.fromString(productId));
+        if (product.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find this product!");
+        }
+
+        return new ResponseEntity<>(productService.mapToEditProductDTO(product.get()), HttpStatus.OK);
+    }
+
     @GetMapping("/getCategoryPreview")
     public ResponseEntity<?> getAllPreview(@RequestParam ProductCategory category,
                                            @RequestParam Integer pageNum,
@@ -125,8 +218,21 @@ public class ProductController {
             sortDirection = Sort.Direction.DESC;
         }
 
-        Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE, sortDirection, sortBy);
-        Page<Product> productList = productRepository.findByCategory(category, pageable);
+        Page<Product> productList = null;
+        if (sortBy.equals("rating")) {
+            Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE);
+
+            if(sortDirection.isAscending()) {
+                productList = productRepository.findByCategoryOrderByAverageRatingAsc(category, pageable);
+            } else {
+                productList = productRepository.findByCategoryOrderByAverageRatingDesc(category, pageable);
+            }
+
+        } else {
+            // Pageable starts page at 0, while front end starts at 1
+            Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE, sortDirection, sortBy);
+            productList = productRepository.findByCategory(category, pageable);
+        }
 
         if (productList.isEmpty()) {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No products found!");
@@ -154,14 +260,36 @@ public class ProductController {
         }
 
         Page<Product> productList;
-        Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE, sortDirection, sortBy);
+        if (sortBy.equals("rating")) {
+            Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE);
 
-        if (category == null || category.equals(ProductCategory.ALL)) {
-            productList = productRepository
-                    .findByNameContainingIgnoreCase(keyword, pageable);
+            if(sortDirection.isAscending()) {
+                if (category == null || category.equals(ProductCategory.ALL)) {
+                    productList = productRepository
+                            .findByNameContainingIgnoreCaseOrderByAverageRatingAsc(keyword, pageable);
+                } else {
+                    productList = productRepository
+                            .findByNameContainingIgnoreCaseAndCategoryOrderByAverageRatingAsc(keyword, category, pageable);
+                }
+            } else {
+
+                if (category == null || category.equals(ProductCategory.ALL)) {
+                    productList = productRepository
+                            .findByNameContainingIgnoreCaseOrderByAverageRatingDesc(keyword, pageable);
+                } else {
+                    productList = productRepository
+                            .findByNameContainingIgnoreCaseAndCategoryOrderByAverageRatingDesc(keyword, category, pageable);
+                }
+            }
         } else {
-            productList = productRepository
-                    .findByNameContainingIgnoreCaseAndCategory(keyword, category, pageable);
+            Pageable pageable = PageRequest.of(pageNum - 1, ITEMS_PER_PAGE, sortDirection, sortBy);
+            if (category == null || category.equals(ProductCategory.ALL)) {
+                productList = productRepository
+                        .findByNameContainingIgnoreCase(keyword, pageable);
+            } else {
+                productList = productRepository
+                        .findByNameContainingIgnoreCaseAndCategory(keyword, category, pageable);
+            }
         }
 
         if (productList.isEmpty()) {
@@ -217,7 +345,6 @@ public class ProductController {
         productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product.get()));
 
             if (product.get().getReviews().size() > 0) {
-                List<Review> list = product.get().getReviews();
                 Sort.Direction sortDirection = Sort.Direction.ASC;
 
                 if(reviewDirection.equalsIgnoreCase("desc")) {
@@ -239,30 +366,81 @@ public class ProductController {
                 List<ReviewDTO> reviewDTOS = reviewService.mapToReviewDTO(pagedReview.getContent());
                 productDTO.setReviews(reviewDTOS);
 
-                OptionalDouble averageRating = list
-                        .stream()
-                        .mapToDouble(obj -> obj.getRating())
-                        .average();
+                // Get all reviews first
+                List<Review> list = reviewService.getAllReviewsByProductId(product.get().getProductId());
+                if (!list.isEmpty()) {
+                    productDTO.setRatingCount(list.size());
+                    productDTO.setReviewStartDate(reviewService.getEarliestReviewDate(product.get().getProductId()));
+                    productDTO.setReviewEndDate(reviewService.getLatestReviewDate(product.get().getProductId()));
+                    productDTO.setRatings(reviewService.getRatings(list));
 
-                productDTO.setRating(averageRating.getAsDouble());
+                    OptionalDouble averageRating = list
+                            .stream()
+                            .mapToDouble(obj -> obj.getRating())
+                            .average();
 
-                BigDecimal averagePrice = list.stream()
-                        .map(obj -> obj.getPrice())
-                        .reduce(BigDecimal.ZERO, BigDecimal::add)
-                        .divide(BigDecimal.valueOf(list.size()), RoundingMode.HALF_UP);
+                    productDTO.setRating(averageRating.getAsDouble());
 
-                Optional<BigDecimal> minPrice = list.stream()
-                        .map(obj -> obj.getPrice())
-                        .min(BigDecimal::compareTo);
+                    BigDecimal averagePrice = list.stream()
+                            .map(obj -> obj.getPrice())
+                            .reduce(BigDecimal.ZERO, BigDecimal::add)
+                            .divide(BigDecimal.valueOf(list.size()), RoundingMode.HALF_UP);
 
-                Optional<BigDecimal> maxPrice = list.stream()
-                        .map(obj -> obj.getPrice())
-                        .max(BigDecimal::compareTo);
+                    Optional<BigDecimal> minPrice = list.stream()
+                            .map(obj -> obj.getPrice())
+                            .min(BigDecimal::compareTo);
 
-                productDTO.setAveragePrice(averagePrice);
-                productDTO.setMaxPrice(maxPrice.get());
-                productDTO.setMinPrice(minPrice.get());
+                    Optional<BigDecimal> maxPrice = list.stream()
+                            .map(obj -> obj.getPrice())
+                            .max(BigDecimal::compareTo);
+
+                    productDTO.setAveragePrice(averagePrice);
+                    productDTO.setMaxPrice(maxPrice.get());
+                    productDTO.setMinPrice(minPrice.get());
+                }
             }
+
+        // Get current unverified review
+        Optional<Review> unverifiedReview = reviewService.getUnverifiedOrReportedReview(
+                    userService.getCurrentUser().getId(), product.get().getProductId());
+
+            if (unverifiedReview.isPresent()) {
+                productDTO.setUnverifiedReview(reviewService.mapToReviewDTO(List.of(unverifiedReview.get())).get(0));
+            }
+        return new ResponseEntity<>(productDTO, HttpStatus.OK);
+    }
+
+    @GetMapping("/get")
+    public ResponseEntity<?> getProduct(@RequestParam String id) {
+
+        Optional<Product> product = productRepository
+                .findById(UUID.fromString(id));
+
+        if (product.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find the specified product");
+        }
+
+        ProductDTO productDTO = new ProductDTO();
+        try {
+            if (product.get().getImages() != null) {
+                List<byte[]> images = new ArrayList<>();
+                for (ProductImage img : product.get().getImages()) {
+                    byte[] file = ImageUtil.loadImage(img.getImageDirectory());
+                    images.add(file);
+                }
+                productDTO.setImages(images);
+            }
+        } catch (Exception e) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+
+        productDTO.setProductId(product.get().getProductId());
+        productDTO.setName(product.get().getName());
+        productDTO.setCategory(product.get().getCategory());
+        productDTO.setReleaseYear(product.get().getReleaseYear());
+        productDTO.setDescription(product.get().getDescription());
+        productDTO.setDate_created(product.get().getCreated());
+        productDTO.setDate_updated(product.get().getUpdated());
 
         return new ResponseEntity<>(productDTO, HttpStatus.OK);
     }

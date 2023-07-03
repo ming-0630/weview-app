@@ -210,4 +210,12 @@ public class VoteServiceImpl implements VoteService {
         return 0;
     }
 
+    public int getUserTotalUpvotes(UUID userId) {
+        return voteRepository.countByReview_UserIdAndVoteType(userId, VoteType.UPVOTE);
+    }
+
+    public int getUserTotalDownvotes(UUID userId) {
+        return voteRepository.countByReview_UserIdAndVoteType(userId, VoteType.DOWNVOTE);
+    }
+
 }
