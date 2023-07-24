@@ -24,6 +24,7 @@ public class ReviewDTO {
     private VoteType currentUserVote;
     private Integer commentCount;
     private boolean isVerified;
+    private Integer sentimentScore;
 
     // When add
     private UUID productId;

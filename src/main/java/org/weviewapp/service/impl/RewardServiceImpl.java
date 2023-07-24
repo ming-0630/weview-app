@@ -147,7 +147,11 @@ public class RewardServiceImpl implements RewardService {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Insufficient points!");
         }
 
-        Optional<RewardCode> rewardCode = rewardCodeRepository.findFirstByUserIdIsNull();
+        if (!user.getIsVerified()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Unverified user cannot redeem rewards!");
+        }
+
+        Optional<RewardCode> rewardCode = rewardCodeRepository.findFirstByRewardIdAndUserIdIsNull(rewardId);
 
         if (rewardCode.isEmpty()) {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No codes are left!");
@@ -155,6 +159,7 @@ public class RewardServiceImpl implements RewardService {
 
         rewardCode.get().setUser(user);
         rewardCode.get().setDateRedeemed(LocalDateTime.now());
+        rewardCode.get().setReward(reward.get());
         rewardCodeRepository.save(rewardCode.get());
 
         User updatedUser = userService.modifyPoints(user.getId(), -reward.get().getPoints());
@@ -173,8 +178,7 @@ public class RewardServiceImpl implements RewardService {
         dto.setName(reward.getName());
         dto.setId(reward.getId());
         dto.setPoints(reward.getPoints());
-        dto.setCodeCount(rewardCodeRepository.countByRewardIdAndUserIdIsNull(reward.getId()));
-
+        dto.setCodeCount(rewardCodeRepository.countByRewardIdAndUser_IdIsNull(reward.getId()));
         try {
             dto.setImage(ImageUtil.loadImage(reward.getImageDir()));
         } catch (Exception ex) {

@@ -11,8 +11,6 @@ public class EncryptionUtil{
 
     @Autowired
     public EncryptionUtil() {
-//        String salt = KeyGenerators.string().generateKey();
-//        System.out.println(salt);
         encryptor = Encryptors.text("YOURSECRETKEY", "c7f34f8774579c17");
     }
 

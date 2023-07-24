@@ -15,8 +15,12 @@ public class UserDTO {
     private Integer points;
     private List<String> role;
     private List<ReviewDTO> reviews;
+    private List<CommentDTO> comments;
     private Integer totalUpvotes;
     private Integer totalDownvotes;
+    private Integer reviewsCurrentPage;
+    private Integer reviewsTotalPage;
+    private Integer totalReviews;
 
     // For upload
     private MultipartFile uploadedImage;

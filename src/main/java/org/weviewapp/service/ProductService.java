@@ -8,4 +8,6 @@ import java.util.List;
 public interface ProductService {
     List<ProductDTO> mapToPreviewDTO(List<Product> product);
     ProductDTO mapToEditProductDTO(Product product);
+    Boolean hasExceededFeaturedLimit();
+    void removeOldestFeaturedProduct();
 }

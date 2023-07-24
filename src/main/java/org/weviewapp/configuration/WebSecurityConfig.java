@@ -40,12 +40,15 @@ public class WebSecurityConfig {
     }
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http.csrf().disable()
                 .cors().and()
                 .authorizeHttpRequests((authorize) ->
                                         authorize
                                                 .requestMatchers("/api/principal/**").permitAll()
+                                                .requestMatchers("/api/auth/**").permitAll()
+                                                .requestMatchers("/api/product/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/reward/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/report/admin/**").hasRole("ADMIN")
                                                 .requestMatchers(HttpMethod.GET,"/api/product/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET,"/api/review/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET,"/api/user/**").permitAll()
@@ -53,7 +56,6 @@ public class WebSecurityConfig {
                                                 .requestMatchers("/api/review/**").hasRole("USER")
                                                 .requestMatchers("/api/voting/**").hasRole("USER")
                                                 .requestMatchers("/api/product/**").hasRole("USER")
-                                                .requestMatchers("/api/auth/**").permitAll()
                                         .anyRequest().authenticated()
                 ).exceptionHandling( exception -> exception
                     .authenticationEntryPoint(authenticationEntryPoint)
@@ -68,7 +70,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // replace "*" with the allowed origins
+        configuration.setAllowedOrigins(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
 

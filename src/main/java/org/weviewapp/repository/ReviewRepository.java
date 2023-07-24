@@ -2,6 +2,7 @@ package org.weviewapp.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.weviewapp.entity.Review;
@@ -12,11 +13,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ReviewRepository extends JpaRepository<Review, UUID> {
-    Boolean existsByUser_Id(UUID userId);
     Page<Review> findByUserId(UUID userId, Pageable pageable);
     Page<Review> findByIsVerifiedIsTrueAndReportIsNullAndProduct_ProductId(UUID productId, Pageable pageable);
-    Optional<List<Review>> findAllByIsVerifiedIsTrueAndReportIsNullAndProduct_ProductId(UUID productId);
-    Optional<List<Review>> findAllByIsVerifiedIsTrueAndReportIsNullAndUserIdOrderByDateCreatedDesc(UUID userId);
+    Optional<List<Review>> findAllByIsVerifiedIsTrueAndReportIsNullAndProduct_ProductId(UUID productId, Sort sort);
+    Page<Review> findAllByIsVerifiedIsTrueAndReportIsNullAndUserIdOrderByDateCreatedDesc(UUID userId, Pageable pageable);
     @Query(value = "SELECT r FROM Review r LEFT JOIN r.votes v WHERE r.product.productId = :productId " +
             "AND r.isVerified = true " +
             "AND r.report.id = null " +

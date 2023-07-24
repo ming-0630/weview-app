@@ -1,7 +1,8 @@
 package org.weviewapp.service.impl;
 
 import com.google.gson.Gson;
-import lombok.Data;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -11,11 +12,13 @@ import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.weviewapp.dto.ClassificationResult;
 import org.weviewapp.dto.ReviewDTO;
 import org.weviewapp.entity.*;
 import org.weviewapp.enums.ReportAction;
@@ -60,12 +63,15 @@ public class ReviewServiceImpl implements ReviewService {
             reviewDTO.setTitle(review.getTitle());
             reviewDTO.setDescription(review.getDescription());
             reviewDTO.setDate_created(review.getDateCreated());
+            reviewDTO.setDate_updated(review.getDateUpdated());
             reviewDTO.setRating(review.getRating());
             reviewDTO.setVotes(voteService.getTotalUpvotes(VoteOn.REVIEW, review.getId()) -
                     voteService.getTotalDownvotes(VoteOn.REVIEW, review.getId()));
             reviewDTO.setCommentCount(commentRepository.countByReviewId(review.getId()));
             reviewDTO.setPrice(review.getPrice());
             reviewDTO.setVerified(review.isVerified());
+            reviewDTO.setProductId(review.getProduct().getProductId());
+            reviewDTO.setSentimentScore(review.getSentimentScore());
 
             if (review.getReport() != null) {
                 reviewDTO.setReportId(review.getReport().getId());
@@ -125,7 +131,9 @@ public class ReviewServiceImpl implements ReviewService {
 
             if (review.get().getImages() != null) {
                 review.get().getImages().forEach(img -> {
-                    ImageUtil.deleteImage(img.getImageDirectory());
+                    if (!img.getImageDirectory().equals("template_image.png")) {
+                        ImageUtil.deleteImage(img.getImageDirectory());
+                    }
                 });
             }
 
@@ -135,13 +143,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
     @Override
     public List<Review> getAllReviewsByProductId(UUID productId) {
-        Optional<List<Review>> reviews = reviewRepository.findAllByIsVerifiedIsTrueAndReportIsNullAndProduct_ProductId(productId);
-        return reviews.get();
-    }
-
-    @Override
-    public List<Review> getAllReviewsByUserId(UUID userId) {
-        Optional<List<Review>> reviews = reviewRepository.findAllByIsVerifiedIsTrueAndReportIsNullAndUserIdOrderByDateCreatedDesc(userId);
+        Optional<List<Review>> reviews = reviewRepository.findAllByIsVerifiedIsTrueAndReportIsNullAndProduct_ProductId(productId, Sort.by(Sort.DEFAULT_DIRECTION, "dateCreated"));
         return reviews.get();
     }
 
@@ -159,7 +161,12 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public Page<Review> getReviewsByUserId(UUID userId, Pageable pageable) {
-        Page<Review> reviews = reviewRepository.findByUserId(userId, pageable);
+        Page<Review> reviews;
+        if (userService.getCurrentUser() != null && userId.equals(userService.getCurrentUser().getId())) {
+            reviews = reviewRepository.findByUserId(userId, pageable);
+        } else {
+            reviews = reviewRepository.findAllByIsVerifiedIsTrueAndReportIsNullAndUserIdOrderByDateCreatedDesc(userId, pageable);
+        }
         return reviews;
     }
     @Override
@@ -218,7 +225,7 @@ public class ReviewServiceImpl implements ReviewService {
             int i = 0;
             for (String imgString: imageBase64) {
                 i++;
-                String desc = imageAPICheck(imgString, i, httpClient);
+                String desc = ImageUtil.imageAPICheck(imgString, i, httpClient);
 
                 if(!desc.isBlank()) {
                     reportDesc.add(desc);
@@ -255,7 +262,7 @@ public class ReviewServiceImpl implements ReviewService {
                     r.setReporter(userRepository.findByEmail("ML").get());
                     r.setId(UUID.randomUUID());
                     r.setReview(review);
-                    r.setDescription(reportDesc.toString());
+                    r.setDescription(generateReport(reportDesc));
 
                     r.setReportReasons(reportReasons);
                     reportRepository.save(r);
@@ -276,59 +283,14 @@ public class ReviewServiceImpl implements ReviewService {
         }
     }
 
-    private String imageAPICheck(String img, int i, CloseableHttpClient httpClient) throws IOException {
-        String apiUrl = "http://localhost:5000/api/image"; // Replace with your Python API URL
-        HttpPost request = new HttpPost(apiUrl);
-        String requestBody = "{\"image\":\"" + img + "\"}";
-        StringEntity params = new StringEntity(requestBody);
-        request.addHeader("content-type", "application/json");
-        request.setEntity(params);
-
-        HttpResponse response = httpClient.execute(request);
-        int statusCode = response.getStatusLine().getStatusCode();
-        String responseData = EntityUtils.toString(response.getEntity());
-
-        if (statusCode >= 200 && statusCode < 300) {
-            Gson gson = new Gson();
-
-            ClassificationResult[] results = gson.fromJson(responseData, ClassificationResult[].class);
-            double safeProbability = 0.0;
-            for (ClassificationResult classifications : results) {
-                if (classifications.getLabel().equals("safe")) {
-                    safeProbability = classifications.score;
-                    if (safeProbability > 0.5) {
-                        return "";
-                    }
-
-                    Arrays.sort(results, (a, b) -> Double.compare(b.getScore(), a.getScore()));
-                    double totalScore = 0;
-                    for (ClassificationResult result : results) {
-                        totalScore += result.getScore();
-                    }
-
-                    StringBuilder stringBuilder = new StringBuilder();
-                    stringBuilder.append("Image " + i + ":\n");
-                    for (ClassificationResult result : results) {
-                        double percentage = (result.getScore() / totalScore) * 100;
-                        stringBuilder.append("- ")
-                                .append(result.getLabel().toUpperCase())
-                                .append(" -> ")
-                                .append(String.format("%.2f%%", percentage))
-                                .append("\n");
-                    }
-                    return stringBuilder.toString();
-                }
-            }
-        } else {
-            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Image verification API failed! Error: " + responseData);
-        }
-        return "";
-    }
-
     private String spamAPICheck(String desc, CloseableHttpClient httpClient) throws IOException {
-        String apiUrl = "http://localhost:5000/api/spam"; // Replace with your Python API URL
+        String apiUrl = "http://localhost:5000/api/spam";
         HttpPost request = new HttpPost(apiUrl);
-        String requestBody = "{\"message\":\"" + desc + "\"}";
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("message", desc);
+
+        Gson gson = new Gson();
+        String requestBody = gson.toJson(jsonObject);
         StringEntity params = new StringEntity(requestBody);
         request.addHeader("content-type", "application/json");
         request.setEntity(params);
@@ -338,13 +300,11 @@ public class ReviewServiceImpl implements ReviewService {
         String responseData = EntityUtils.toString(response.getEntity());
 
         if (statusCode >= 200 && statusCode < 300) {
-            Gson gson = new Gson();
-
             ClassificationResult[] results = gson.fromJson(responseData, ClassificationResult[].class);
             double safeProbability = 0.0;
             for (ClassificationResult classifications : results) {
                 if (classifications.getLabel().equalsIgnoreCase("ham")) {
-                    safeProbability = classifications.score;
+                    safeProbability = classifications.getScore();
                     if (safeProbability > 0.5) {
                         return "";
                     }
@@ -361,7 +321,7 @@ public class ReviewServiceImpl implements ReviewService {
                         double percentage = (result.getScore() / totalScore) * 100;
                         stringBuilder.append("- ")
                                 .append(result.getLabel().toUpperCase())
-                                .append(" -> ")
+                                .append(": ")
                                 .append(String.format("%.2f%%", percentage))
                                 .append("\n");
                     }
@@ -375,9 +335,13 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private String gibberishAPICheck(String desc, CloseableHttpClient httpClient) throws IOException {
-        String apiUrl = "http://localhost:5000/api/gibberish"; // Replace with your Python API URL
+        String apiUrl = "http://localhost:5000/api/gibberish";
         HttpPost request = new HttpPost(apiUrl);
-        String requestBody = "{\"message\":\"" + desc + "\"}";
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("message", desc);
+
+        Gson gson = new Gson();
+        String requestBody = gson.toJson(jsonObject);
         StringEntity params = new StringEntity(requestBody);
         request.addHeader("content-type", "application/json");
         request.setEntity(params);
@@ -387,8 +351,6 @@ public class ReviewServiceImpl implements ReviewService {
         String responseData = EntityUtils.toString(response.getEntity());
 
         if (statusCode >= 200 && statusCode < 300) {
-            Gson gson = new Gson();
-
             ClassificationResult results = gson.fromJson(responseData, ClassificationResult.class);
             if (results != null) {
                 StringBuilder stringBuilder = new StringBuilder();
@@ -396,7 +358,7 @@ public class ReviewServiceImpl implements ReviewService {
                     double percentage = (results.getScore()) * 100;
                     stringBuilder.append("- ")
                             .append(results.getLabel().toUpperCase())
-                            .append(" -> ")
+                            .append(": ")
                             .append(String.format("%.2f%%", percentage))
                             .append("\n");
                 return stringBuilder.toString();
@@ -406,10 +368,65 @@ public class ReviewServiceImpl implements ReviewService {
         }
         return "";
     }
-    @Data
-    private class ClassificationResult {
-        private double score;
-        private String label;
+    private static String generateReport(List<String> desc) {
+        StringBuilder sb = new StringBuilder("--- ML Report ---\n");
 
+        for (int i = 0; i < desc.size(); i++) {
+            sb.append(desc.get(i));
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+    public Integer sentimentAPICheck(String desc) throws IOException {
+        CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+        String apiUrl = "http://localhost:5000/api/sentiment";
+        HttpPost request = new HttpPost(apiUrl);
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("message", desc);
+
+        Gson gson = new Gson();
+        String requestBody = gson.toJson(jsonObject);
+        StringEntity params = new StringEntity(requestBody);
+        request.addHeader("content-type", "application/json");
+        request.setEntity(params);
+
+        HttpResponse response = httpClient.execute(request);
+        int statusCode = response.getStatusLine().getStatusCode();
+        String responseData = EntityUtils.toString(response.getEntity());
+
+        if (statusCode >= 200 && statusCode < 300) {
+            JsonParser jsonParser = new JsonParser();
+            JsonObject jsonResult = jsonParser.parse(responseData).getAsJsonObject();
+            double score = jsonResult.get("normalized_score").getAsDouble();
+            return (int) Math.round(score);
+        } else {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Sentiment analysis API failed! Error: " + responseData);
+        }
+    }
+
+    public Review getRandomReview() throws IOException {
+        CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+        String apiUrl = "http://localhost:5000/api/getReview";
+        HttpPost request = new HttpPost(apiUrl);
+
+        request.addHeader("content-type", "application/json");
+
+        HttpResponse response = httpClient.execute(request);
+        int statusCode = response.getStatusLine().getStatusCode();
+        String responseData = EntityUtils.toString(response.getEntity());
+
+        if (statusCode >= 200 && statusCode < 300) {
+            JsonParser jsonParser = new JsonParser();
+            JsonObject jsonResult = jsonParser.parse(responseData).getAsJsonObject();
+            Review review = new Review();
+            review.setDescription(jsonResult.get("review_body").getAsString());
+            review.setTitle(jsonResult.get("review_headline").getAsString());
+            review.setRating(jsonResult.get("star_rating").getAsInt());
+            review.setSentimentScore(sentimentAPICheck(jsonResult.get("review_body").getAsString()));
+            return review;
+        } else {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Sentiment analysis API failed! Error: " + responseData);
+        }
     }
 }

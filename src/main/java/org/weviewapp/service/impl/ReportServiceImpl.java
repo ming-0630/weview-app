@@ -70,11 +70,19 @@ public class ReportServiceImpl implements ReportService {
 
             reportResponseList.add(reportResponse);
         }
+        reportResponseList.sort(Comparator.comparing(ReportListDTO::getLatestReportDate).reversed());
         return new ResponseEntity<>(reportResponseList, HttpStatus.OK);
     }
     @Override
+    public ResponseEntity<?> getOneReport(UUID reportId) {
+        Optional<Report> report = reportRepository.findById(reportId);
+        if (report.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find report!");
+        }
+        return new ResponseEntity<>(report.get(), HttpStatus.OK);
+    }
+    @Override
     public Report addReport(ReportDTO reportDTO) {
-//        System.out.println(reportDTO);
         Optional<Review> review = reviewRepository.findById(UUID.fromString(reportDTO.getReviewId()));
 
         if (review.isEmpty()) {
@@ -144,8 +152,12 @@ public class ReportServiceImpl implements ReportService {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Report status is not under review!");
         }
 
-        if (reportDTO.getAction().equals(ReportAction.RESOLVED) || reportDTO.getAction().equals(ReportAction.DISMISSED)) {
+        if (reportDTO.getAction().equals(ReportAction.DISMISSED)) {
             report.get().setAction(reportDTO.getAction());
+            if (report.get().getReporter().getEmail().equals("ML")) {
+                report.get().getReview().setVerified(true);
+                reviewRepository.save(report.get().getReview());
+            }
             reportRepository.save(report.get());
         }
 

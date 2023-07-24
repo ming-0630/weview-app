@@ -25,22 +25,22 @@ public class RewardController {
     @Autowired
     private RewardRepository rewardRepository;
 
-    @PostMapping("/add")
+    @PostMapping("/admin/add")
     public ResponseEntity<?> addReward(@ModelAttribute RewardDTO reward) {
         Reward r = rewardService.addReward(reward);
         return new ResponseEntity<>(r, HttpStatus.OK);
     }
-    @PostMapping("/edit")
+    @PostMapping("/admin/edit")
     public ResponseEntity<?> editReward(@ModelAttribute RewardDTO reward) {
         Reward r = rewardService.editReward(reward);
         return new ResponseEntity<>(r, HttpStatus.OK);
     }
-    @GetMapping("/getCodes")
+    @GetMapping("/admin/getCodes")
     public ResponseEntity<?> getCodes(@RequestParam String rewardId) {
         return new ResponseEntity<>(rewardService.getCodes(UUID.fromString(rewardId)), HttpStatus.OK);
     }
 
-    @PostMapping("/addCodes")
+    @PostMapping("/admin/addCodes")
     public ResponseEntity<?> addCodes(
             @RequestBody AddCodeDTO dto) {
         rewardService.addCodes(UUID.fromString(dto.getRewardId()), dto.getCodes());

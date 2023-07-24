@@ -62,9 +62,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User verifyUser() {
+    public User verifyUser(String phoneNum) {
         User user = getCurrentUser();
         user.setIsVerified(true);
+        user.setPhoneNumber(phoneNum);
         return userRepository.save(user);
     }
     @Override
@@ -78,11 +79,22 @@ public class UserServiceImpl implements UserService {
             Optional<User> user = userRepository.findByEmail(authentication.getName());
 
             if (user.isEmpty()) {
-                throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found! Please login again to continue");
+                return null;
             }
             return user.get();
         } else {
             throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not authorized! Please login again to continue");
+        }
+    }
+
+    @Override
+    public User getMLUser() {
+        Optional<User> user = userRepository.findByEmail("ML");
+
+        if (user.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "Unable to find ML User!");
+        } else {
+            return user.get();
         }
     }
 }

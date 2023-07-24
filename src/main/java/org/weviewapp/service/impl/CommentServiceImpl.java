@@ -79,7 +79,6 @@ public class CommentServiceImpl implements CommentService {
 
         return list;
     }
-
     @Override
     public void deleteComment(UUID commentId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

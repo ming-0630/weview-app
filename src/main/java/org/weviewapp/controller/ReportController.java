@@ -9,6 +9,7 @@ import org.weviewapp.service.ReportService;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @CrossOrigin
@@ -19,23 +20,25 @@ public class ReportController {
 
     @PostMapping("/add")
     public ResponseEntity<?> addReport(@RequestBody ReportDTO reportDTO) {
-//        System.out.println(reportDTO);
-
         reportService.addReport(reportDTO);
 
         Map<String, Object> response = new HashMap<>();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping("/getAll")
+    @GetMapping("/admin/getAll")
     public ResponseEntity<?> getAllReports() {
         return reportService.getAllReports();
 
 //        Map<String, Object> response = new HashMap<>();
 //        return new ResponseEntity<>(response, HttpStatus.OK);
     }
-    @PostMapping("/action")
+    @PostMapping("/admin/action")
     public ResponseEntity<?> acceptReport(@RequestBody ReportDTO reportDTO) {
         return new ResponseEntity<>(reportService.reportAction(reportDTO), HttpStatus.OK);
+    }
+    @GetMapping("/get")
+    public ResponseEntity<?> getReport(@RequestParam String reportId) {
+        return reportService.getOneReport(UUID.fromString(reportId));
     }
 }

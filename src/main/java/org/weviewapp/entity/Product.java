@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.weviewapp.enums.ProductCategory;
 
+import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.Date;
@@ -43,6 +44,13 @@ public class Product {
     @Column(name = "date_updated", nullable = false)
     private Date updated;
 
+    private Integer minProductPriceRange;
+
+    private Integer maxProductPriceRange;
+
+    private Boolean isFeatured;
+
+    private LocalDateTime featuredDate;
     @PrePersist
     protected void onCreate() {
         updated = created = new Date();

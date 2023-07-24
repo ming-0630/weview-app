@@ -27,6 +27,10 @@ public class ProductDTO {
     private BigDecimal maxPrice;
     private BigDecimal minPrice;
 
+    private Integer minProductPriceRange;
+    private Integer maxProductPriceRange;
+    private Boolean isFeatured;
+
     // Preview field
     private byte[] coverImage;
     private boolean isWatchlisted;
@@ -35,6 +39,7 @@ public class ProductDTO {
     private List<byte[]> images;
     private List<ReviewDTO> reviews;
     private Integer totalReviewPage;
+    private Integer currentReviewPage;
     private ReviewDTO unverifiedReview;
     private LocalDateTime reviewStartDate;
     private LocalDateTime reviewEndDate;

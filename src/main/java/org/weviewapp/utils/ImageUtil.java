@@ -1,9 +1,16 @@
 package org.weviewapp.utils;
 
+import com.google.gson.Gson;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.weviewapp.dto.ClassificationResult;
 import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.exception.WeviewAPIException;
 
@@ -13,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.UUID;
 
 public final class ImageUtil {
@@ -80,5 +88,54 @@ public final class ImageUtil {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static String imageAPICheck(String img, int i, CloseableHttpClient httpClient) throws IOException {
+        String apiUrl = "http://localhost:5000/api/image";
+        HttpPost request = new HttpPost(apiUrl);
+        String requestBody = "{\"image\":\"" + img + "\"}";
+        StringEntity params = new StringEntity(requestBody);
+        request.addHeader("content-type", "application/json");
+        request.setEntity(params);
+
+        HttpResponse response = httpClient.execute(request);
+        int statusCode = response.getStatusLine().getStatusCode();
+        String responseData = EntityUtils.toString(response.getEntity());
+
+        if (statusCode >= 200 && statusCode < 300) {
+            Gson gson = new Gson();
+
+            ClassificationResult[] results = gson.fromJson(responseData, ClassificationResult[].class);
+            double safeProbability = 0.0;
+            for (ClassificationResult classifications : results) {
+                if (classifications.getLabel().equals("safe")) {
+                    safeProbability = classifications.getScore();
+                    if (safeProbability > 0.5) {
+                        return "";
+                    }
+
+                    Arrays.sort(results, (a, b) -> Double.compare(b.getScore(), a.getScore()));
+                    double totalScore = 0;
+                    for (ClassificationResult result : results) {
+                        totalScore += result.getScore();
+                    }
+
+                    StringBuilder stringBuilder = new StringBuilder();
+                    stringBuilder.append("Image " + i + ":\n");
+                    for (ClassificationResult result : results) {
+                        double percentage = (result.getScore() / totalScore) * 100;
+                        stringBuilder.append("- ")
+                                .append(result.getLabel().toUpperCase())
+                                .append(": ")
+                                .append(String.format("%.2f%%", percentage))
+                                .append("\n");
+                    }
+                    return stringBuilder.toString();
+                }
+            }
+        } else {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Image verification API failed! Error: " + responseData);
+        }
+        return "";
     }
 }

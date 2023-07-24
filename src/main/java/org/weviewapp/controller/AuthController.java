@@ -72,7 +72,7 @@ public class AuthController {
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUser)
                 .map(user -> {
-                    String token = tokenProvider.generateToken(user.getUsername());
+                    String token = tokenProvider.generateToken(user.getEmail());
                     return ResponseEntity.ok(new JWTRefreshResponse(token, requestRefreshToken));
                 })
                 .orElseThrow(() -> new RefreshTokenException("Refresh token is not in database!"));
@@ -80,8 +80,6 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegisterDTO registerDto){
-        System.out.println(registerDto);
-
         // add check for username exists in a DB
         if(userRepository.existsByUsername(registerDto.getUsername())){
             return new ResponseEntity<>("Username is already taken!", HttpStatus.BAD_REQUEST);
@@ -100,6 +98,7 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
         user.setPoints(0);
         user.setIsVerified(false);
+        user.setProfileImageDirectory("");
 
         Role roles = roleRepository.findByName("ROLE_USER").get();
         user.setRoles(Collections.singleton(roles));

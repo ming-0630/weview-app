@@ -62,20 +62,22 @@ public class Review {
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @Nullable
-    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReviewImage> images = new ArrayList<>();
 
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "user_id")
     private User user;
 
-    @OneToOne(cascade = CascadeType.DETACH, orphanRemoval = true)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "report_id", referencedColumnName = "report_id")
     @Nullable
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @JsonIgnore
     private Report report;
+
+    private Integer sentimentScore;
 
     @Column(name="is_verified")
     private boolean isVerified;

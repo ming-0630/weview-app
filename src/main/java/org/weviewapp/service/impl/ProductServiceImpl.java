@@ -103,7 +103,23 @@ public class ProductServiceImpl implements ProductService {
         productDTO.setDescription(product.getDescription());
         productDTO.setDate_created(product.getCreated());
         productDTO.setDate_updated(product.getUpdated());
+        productDTO.setMinProductPriceRange(product.getMinProductPriceRange());
+        productDTO.setMaxProductPriceRange(product.getMaxProductPriceRange());
+        productDTO.setIsFeatured(product.getIsFeatured());
 
         return productDTO;
+    }
+
+    @Override
+    public Boolean hasExceededFeaturedLimit() {
+        return productRepository.findByIsFeaturedIsTrueOrderByFeaturedDateDesc().size() > 9;
+    }
+    @Override
+    public void removeOldestFeaturedProduct() {
+        List<Product> products = productRepository.findByIsFeaturedIsTrueOrderByFeaturedDateDesc();
+
+        Product productToRemove = products.get(products.size() - 1);
+        productToRemove.setIsFeatured(false);
+        productRepository.save(productToRemove);
     }
 }

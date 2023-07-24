@@ -22,6 +22,8 @@ import org.weviewapp.service.UserService;
 import org.weviewapp.service.VoteService;
 import org.weviewapp.utils.ImageUtil;
 
+import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -53,7 +55,7 @@ public class ReviewController {
     ReportRepository reportRepository;
 
     @PostMapping("/add")
-    public ResponseEntity<?> addReview(@ModelAttribute ReviewDTO reviewDTO) {
+    public ResponseEntity<?> addReview(@ModelAttribute ReviewDTO reviewDTO) throws IOException {
         //Check if user exists
         if(reviewRepository.existsByProduct_ProductIdAndUser_Id(reviewDTO.getProductId(), reviewDTO.getUserId())){
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "User already has a review for this product!");
@@ -62,6 +64,19 @@ public class ReviewController {
         // perform checking
         Review review = new Review();
         review.setId(UUID.randomUUID());
+
+        Optional<Product> product = productRepository.findById(reviewDTO.getProductId());
+        if (product.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Error: Cannot find specified product!");
+        }
+
+        review.setProduct(product.get());
+
+        if (reviewDTO.getPrice().compareTo(BigDecimal.valueOf(product.get().getMinProductPriceRange())) < 0  ||
+                reviewDTO.getPrice().compareTo(BigDecimal.valueOf(product.get().getMaxProductPriceRange())) > 0 ) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Error: Acceptable price range for this product is "
+                    + product.get().getMinProductPriceRange() + " - " + product.get().getMaxProductPriceRange());
+        }
 
         List<String> imagesBase64 =  new ArrayList<>();
         if (reviewDTO.getUploadedImages() != null) {
@@ -90,14 +105,7 @@ public class ReviewController {
         review.setPrice(reviewDTO.getPrice());
         review.setTitle(reviewDTO.getTitle());
         review.setDescription(reviewDTO.getDescription());
-
-        Optional<Product> product = productRepository.findById(reviewDTO.getProductId());
-        if (product.isEmpty()) {
-            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Error: Cannot find specified product!");
-        }
-
-        review.setProduct(product.get());
-
+        review.setSentimentScore(reviewService.sentimentAPICheck(reviewDTO.getDescription()));
 
         Optional<User> user = userRepository.findById(reviewDTO.getUserId());
         if (user.isEmpty()) {
@@ -118,6 +126,84 @@ public class ReviewController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @PostMapping("/edit")
+    public ResponseEntity<?> editReview(@ModelAttribute ReviewDTO reviewDTO) throws IOException {
+        //Check if user exists
+        Optional<Review> r = reviewRepository.findById(reviewDTO.getReviewId());
+
+        if(r.isEmpty()){
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find review!");
+        }
+
+        Review review = r.get();
+
+        if (reviewDTO.getPrice().compareTo(BigDecimal.valueOf(review.getProduct().getMinProductPriceRange())) < 0  ||
+                reviewDTO.getPrice().compareTo(BigDecimal.valueOf(review.getProduct().getMaxProductPriceRange())) > 0 ) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Error: The acceptable price range for this product is "
+                    + review.getProduct().getMinProductPriceRange() + " - " + review.getProduct().getMaxProductPriceRange());
+        }
+
+        User currentUser = userService.getCurrentUser();
+        if (!review.getUser().getId().equals(currentUser.getId())) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot edit other user's review!");
+        }
+
+        // Clear prev images
+        if (!review.getImages().isEmpty()) {
+            for (ReviewImage image: review.getImages()) {
+                if(!image.getImageDirectory().equals("template_image.png")) {
+                    //Avoid deleting template image
+                    ImageUtil.deleteImage(image.getImageDirectory());
+                }
+            }
+            review.getImages().clear();
+        }
+
+        List<String> imagesBase64 =  new ArrayList<>();
+        if (reviewDTO.getUploadedImages() != null) {
+            int i = 0;
+            for (MultipartFile image: reviewDTO.getUploadedImages()) {
+                i++;
+                try {
+                    byte[] fileBytes = image.getBytes();
+                    String base64Bytes = Base64.getEncoder().encodeToString(fileBytes);
+                    imagesBase64.add(base64Bytes);
+
+                    ReviewImage newImage = new ReviewImage();
+                    newImage.setId(UUID.randomUUID());
+                    newImage.setReview(review);
+
+                    String imgDir = ImageUtil.uploadImage(image, ImageCategory.REVIEW_IMG);
+                    newImage.setImageDirectory(imgDir);
+                    review.getImages().add(newImage);
+                } catch (Exception ex) {
+                    throw new WeviewAPIException(HttpStatus.BAD_REQUEST, ex.getMessage());
+                }
+            }
+        }
+
+        review.setRating(reviewDTO.getRating());
+        review.setPrice(reviewDTO.getPrice());
+        review.setTitle(reviewDTO.getTitle());
+        review.setDescription(reviewDTO.getDescription());
+        review.setSentimentScore(reviewService.sentimentAPICheck(reviewDTO.getDescription()));
+
+        Optional<Report> prevReport = reportRepository.findByReporterIdAndReviewId(userService.getMLUser().getId(), reviewDTO.getReviewId());
+
+        // Delete previous ML report
+        prevReport.ifPresent(report -> reportRepository.delete(report));
+
+        review.setVerified(false);
+        Review addedReview = reviewRepository.save(review);
+
+        // Async call
+        reviewService.reviewVerify(imagesBase64, addedReview);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Edited successfully!");
+        response.put("review", addedReview);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
     @PostMapping("/delete")
     public ResponseEntity<?> deleteReview(@RequestParam String reviewId) {
         reviewService.deleteReview(UUID.fromString(reviewId));
@@ -275,10 +361,22 @@ public class ReviewController {
         response.put("totalReviews", pagedReview.getTotalElements());
         response.put("totalPages", pagedReview.getTotalPages());
 
-
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @GetMapping("/getOneReview")
+    public ResponseEntity<?> getOneReviews(
+            @RequestParam String reviewId
+    ) {
+        Optional<Review> review = reviewRepository.findById(UUID.fromString(reviewId));
+
+        if (review.isEmpty()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find review!");
+        }
+
+        ReviewDTO reviewDTO = reviewService.mapToReviewDTO(List.of(review.get())).get(0);
+        return new ResponseEntity<>(reviewDTO, HttpStatus.OK);
+    }
     @GetMapping("/getUserComments")
     public ResponseEntity<?> getUserComments(
             @RequestParam String userId,
@@ -292,7 +390,7 @@ public class ReviewController {
             sortDirection = Sort.Direction.DESC;
         }
 
-        Pageable pageable = PageRequest.of(pageNum - 1, 10, sortDirection, sortBy);
+        Pageable pageable = PageRequest.of(pageNum - 1, 5, sortDirection, sortBy);
 
         Page<Comment> commentList = commentRepository.findByUserId(UUID.fromString(userId), pageable);
 

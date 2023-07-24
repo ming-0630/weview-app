@@ -3,6 +3,8 @@ package org.weviewapp.controller;
 import com.twilio.Twilio;
 import com.twilio.rest.verify.v2.service.Verification;
 import com.twilio.rest.verify.v2.service.VerificationCheck;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,13 +19,16 @@ import org.weviewapp.dto.ProductDTO;
 import org.weviewapp.dto.ProductResponseDTO;
 import org.weviewapp.dto.UserDTO;
 import org.weviewapp.entity.Product;
+import org.weviewapp.entity.Review;
 import org.weviewapp.entity.User;
 import org.weviewapp.entity.Watchlist;
 import org.weviewapp.exception.WeviewAPIException;
 import org.weviewapp.repository.UserRepository;
 import org.weviewapp.repository.WatchlistRepository;
 import org.weviewapp.service.*;
+import org.weviewapp.utils.ImageUtil;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -45,6 +50,8 @@ public class UserController {
     private ProductService productService;
     @Autowired
     private WatchlistService watchlistService;
+    @Autowired
+    private  CommentService commentService;
 
     @GetMapping("/getUser")
     public ResponseEntity<?> getUser() {
@@ -69,10 +76,14 @@ public class UserController {
             throw new WeviewAPIException(HttpStatus.UNAUTHORIZED, "User not found!");
         }
         UserDTO userDTO = userService.mapUserToDTO(user.get());
-        userDTO.setReviews(reviewService.mapToReviewDTO(
-                reviewService.getAllReviewsByUserId(UUID.fromString(userId))));
+        Pageable pageable = PageRequest.of(0, 5, Sort.Direction.DESC, "dateCreated");
+        Page<Review> reviews =  reviewService.getReviewsByUserId(UUID.fromString(userId), pageable);
+        userDTO.setReviews(reviewService.mapToReviewDTO(reviews.getContent()));
         userDTO.setTotalUpvotes(voteService.getUserTotalUpvotes(user.get().getId()));
         userDTO.setTotalDownvotes(voteService.getUserTotalDownvotes(user.get().getId()));
+        userDTO.setReviewsCurrentPage(1);
+        userDTO.setReviewsTotalPage(reviews.getTotalPages());
+        userDTO.setTotalReviews((int) reviews.getTotalElements());
         return new ResponseEntity<>(userDTO, HttpStatus.OK);
     }
     @GetMapping("/watchlist")
@@ -125,17 +136,32 @@ public class UserController {
     }
     @PostMapping("/updateProfilePicture")
     public ResponseEntity<?> updateProfilePicture(
-            @ModelAttribute UserDTO userDTO) {
+            @ModelAttribute UserDTO userDTO) throws IOException {
         if (userDTO.getUploadedImage().isEmpty()) {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No uploaded images!");
         }
-        User updatedUser = userService.uploadUserImage(userDTO.getUploadedImage());
-        UserDTO newUserDTO = userService.mapUserToDTO(updatedUser);
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Added successfully!");
-        response.put("user", newUserDTO);
 
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        byte[] fileBytes = userDTO.getUploadedImage().getBytes();
+        String base64Bytes = Base64.getEncoder().encodeToString(fileBytes);
+
+        CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+        String checkResult = ImageUtil.imageAPICheck(base64Bytes, 0, httpClient);
+
+        if(!checkResult.isBlank()) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Image checking failed!");
+            response.put("reason", checkResult);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } else {
+            User updatedUser = userService.uploadUserImage(userDTO.getUploadedImage());
+            UserDTO newUserDTO = userService.mapUserToDTO(updatedUser);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Added successfully!");
+            response.put("user", newUserDTO);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
     }
 
     @GetMapping("/getPoints")
@@ -165,7 +191,7 @@ public class UserController {
         Verification verification = Verification.creator(
                         "VAb24b0931494348d7e59eef1e55c03f10", // this is your verification sid
                         phoneNumber, //this is your Twilio verified recipient phone number
-                        "whatsapp") // this is your channel type
+                        "sms") // this is your channel type
                 .create();
 
         System.out.println(verification.getStatus());
@@ -193,10 +219,16 @@ public class UserController {
 
             System.out.println(verificationCheck.getStatus());
             if (verificationCheck.getValid()) {
-                userService.verifyUser();
-                return new ResponseEntity<>("This user's verification has been completed successfully", HttpStatus.OK);
+                User updatedUser = userService.verifyUser(phoneNumber);
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "This user's verification has been completed successfully!");
+                response.put("user", userService.mapUserToDTO(updatedUser));
+
+                return new ResponseEntity<>(response, HttpStatus.OK);
             } else {
-                return new ResponseEntity<>("Wrong OTP!", HttpStatus.OK);
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "Wrong OTP!");
+                return new ResponseEntity<>(response, HttpStatus.OK);
             }
 
         } catch (Exception e) {

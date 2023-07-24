@@ -36,4 +36,5 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             "AND p.category = :category GROUP BY p ORDER BY AVG(r.rating) ASC")
     Page<Product> findByNameContainingIgnoreCaseAndCategoryOrderByAverageRatingAsc(String keyword, ProductCategory category, Pageable pageable);
     List<Product> findByName(String name);
+    List<Product> findByIsFeaturedIsTrueOrderByFeaturedDateDesc();
 }

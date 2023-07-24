@@ -9,8 +9,9 @@ import java.util.UUID;
 public interface UserService {
     User uploadUserImage(MultipartFile file);
     User modifyPoints(UUID userId, Integer points);
-    User verifyUser();
+    User verifyUser(String phoneNum);
     Boolean phoneNumExist(String phoneNum);
     User getCurrentUser();
     UserDTO mapUserToDTO(User user);
+    User getMLUser();
 }

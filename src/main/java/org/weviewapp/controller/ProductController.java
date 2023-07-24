@@ -18,15 +18,13 @@ import org.weviewapp.entity.Review;
 import org.weviewapp.enums.ImageCategory;
 import org.weviewapp.enums.ProductCategory;
 import org.weviewapp.exception.WeviewAPIException;
-import org.weviewapp.repository.CommentRepository;
-import org.weviewapp.repository.ProductImageRepository;
-import org.weviewapp.repository.ProductRepository;
-import org.weviewapp.repository.UserRepository;
+import org.weviewapp.repository.*;
 import org.weviewapp.service.*;
 import org.weviewapp.utils.ImageUtil;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -43,6 +41,8 @@ public class ProductController {
     @Autowired
     private CommentRepository commentRepository;
     @Autowired
+    private ReviewRepository reviewRepository;
+    @Autowired
     private ProductImageRepository productImageRepository;
     @Autowired
     private VoteService voteService;
@@ -53,11 +53,38 @@ public class ProductController {
     @Autowired
     private UserService userService;
 
-    @PostMapping("/add")
+    @GetMapping("/admin/add/checkFeaturedLimit")
+    public ResponseEntity<?> checkFeatured(@ModelAttribute ProductDTO productDto) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("hasExceededFeaturedLimit", productService.hasExceededFeaturedLimit());
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    @PostMapping("/admin/add")
     public ResponseEntity<?> addProduct(@ModelAttribute ProductDTO productDto) {
         // add check for username exists in database
         if(!productRepository.findByName(productDto.getName()).isEmpty()){
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Product Name exists!");
+        }
+
+        if (productDto.getName().isBlank()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Missing Product Name");
+        }
+
+        if (productDto.getCategory() == null) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Missing Product Category");
+        }
+
+        if (productDto.getDescription().isBlank()) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Missing Product Description");
+        }
+
+        if (productDto.getMinProductPriceRange() == null) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Missing Product Min Price Range");
+        }
+
+        if (productDto.getMaxProductPriceRange() == null) {
+            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Missing Product Max Price Range");
         }
 
         Product product = new Product();
@@ -66,6 +93,17 @@ public class ProductController {
         product.setCategory(productDto.getCategory());
         product.setReleaseYear(productDto.getReleaseYear());
         product.setDescription(productDto.getDescription());
+        product.setMinProductPriceRange(productDto.getMinProductPriceRange());
+        product.setMaxProductPriceRange(productDto.getMaxProductPriceRange());
+
+        if(productDto.getIsFeatured() && productService.hasExceededFeaturedLimit()) {
+            productService.removeOldestFeaturedProduct();
+            product.setFeaturedDate(LocalDateTime.now());
+            product.setIsFeatured(true);
+        } else {
+            product.setFeaturedDate(LocalDateTime.now());
+            product.setIsFeatured(true);
+        }
 
         if(productDto.getUploadedImages().isEmpty()) {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No images attached!");
@@ -90,7 +128,7 @@ public class ProductController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping("/edit")
+    @PostMapping("/admin/edit")
     public ResponseEntity<?> editProduct(@ModelAttribute ProductDTO productDto) {
         // add check for username exists in database
         List<Product> products = productRepository.findByName(productDto.getName());
@@ -112,6 +150,22 @@ public class ProductController {
         product.get().setCategory(productDto.getCategory());
         product.get().setReleaseYear(productDto.getReleaseYear());
         product.get().setDescription(productDto.getDescription());
+        product.get().setMinProductPriceRange(productDto.getMinProductPriceRange());
+        product.get().setMaxProductPriceRange(productDto.getMaxProductPriceRange());
+
+        if(productDto.getIsFeatured() && productService.hasExceededFeaturedLimit()) {
+            productService.removeOldestFeaturedProduct();
+            product.get().setFeaturedDate(LocalDateTime.now());
+            product.get().setIsFeatured(true);
+        } else {
+            if (productDto.getIsFeatured()) {
+                product.get().setFeaturedDate(LocalDateTime.now());
+                product.get().setIsFeatured(true);
+            } else {
+                product.get().setFeaturedDate(null);
+                product.get().setIsFeatured(false);
+            }
+        }
 
         if(productDto.getUploadedImages().isEmpty()) {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No images attached!");
@@ -120,7 +174,23 @@ public class ProductController {
         // Clear prev images
         if (!product.get().getImages().isEmpty()) {
             for (ProductImage image: product.get().getImages()) {
-                ImageUtil.deleteImage(image.getImageDirectory());
+                // Prevent deleting default images from initDatabase as the image are shared
+                if (!image.getImageDirectory().equals("PRODUCT_IMG_9d8c272a-f1b5-4bb0-bac7-0dc76d88bc65.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_70b8d218-72ba-4bec-98fa-69ce70801750.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_fc772fcc-88f7-40a1-9cb3-9f2edd67a841.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_f60dcc58-3230-442d-933c-67854bfbb061.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_0973d924-d55c-45e7-9335-57773f6a8cd0.jpg") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_c1c0dc33-13f0-4ccf-89cf-cf04a85662f1.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_86b37a2d-5f27-4df9-a73c-92ebe4146a71.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_21224d46-de75-48a2-acec-5aa1238c7a44.jpg") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_3166aecd-cafc-4069-899b-d1c300e234a3.jpg") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_53f4ed65-80af-4e6d-be8d-908acd7f22cb.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_0520b7ad-8c1a-4620-a69a-406b496786a6.png") &&
+                        !image.getImageDirectory().equals("PRODUCT_IMG_78772259-4d4f-4d50-af06-cc97e8e19501.jpg")
+                ) {
+                    // Only delete if the directory is not default images
+                    ImageUtil.deleteImage(image.getImageDirectory());
+                }
             }
             product.get().getImages().clear();
         }
@@ -142,6 +212,15 @@ public class ProductController {
         response.put("product", addedProduct);
 
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/getAllFeaturedProducts")
+    public ResponseEntity<?> getAllFeaturedProducts() {
+        List<Product> featured = productRepository.findByIsFeaturedIsTrueOrderByFeaturedDateDesc();
+
+        List<ProductDTO> result = productService.mapToPreviewDTO(featured);
+
+        return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
     @GetMapping("/getAllPreview")
@@ -185,9 +264,8 @@ public class ProductController {
         return new ResponseEntity<>(dto, HttpStatus.OK);
     }
 
-    @GetMapping("/getAllUnpaged")
+    @GetMapping("/admin/getAllUnpaged")
     public ResponseEntity<?> getAllUnpaged() {
-
         List<Product> productList = productRepository.findAll();
         if (productList.isEmpty()) {
             throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "No products found!");
@@ -196,7 +274,7 @@ public class ProductController {
         return new ResponseEntity<>(productService.mapToPreviewDTO(productList), HttpStatus.OK);
     }
 
-    @GetMapping("/getProductToEdit")
+    @GetMapping("/admin/getProductToEdit")
     public ResponseEntity<?> getOneProduct(@RequestParam String productId) {
 
         Optional<Product> product = productRepository.findById(UUID.fromString(productId));
@@ -311,9 +389,9 @@ public class ProductController {
     public ResponseEntity<?> getProductDetails(@RequestParam String id,
                                                @RequestParam Integer reviewPageNum,
                                                @RequestParam (defaultValue = "name") String reviewSortBy,
-                                               @RequestParam (defaultValue = "asc") String reviewDirection
+                                               @RequestParam (defaultValue = "asc") String reviewDirection,
+                                               @RequestParam (required = false) String reviewId
     ) {
-
         Optional<Product> product = productRepository
                 .findById(UUID.fromString(id));
 
@@ -342,31 +420,71 @@ public class ProductController {
         productDTO.setDescription(product.get().getDescription());
         productDTO.setDate_created(product.get().getCreated());
         productDTO.setDate_updated(product.get().getUpdated());
-        productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product.get()));
 
             if (product.get().getReviews().size() > 0) {
-                Sort.Direction sortDirection = Sort.Direction.ASC;
 
-                if(reviewDirection.equalsIgnoreCase("desc")) {
-                    sortDirection = Sort.Direction.DESC;
-                }
+                if(reviewId != null) {
+                    // Get specific review location
+                    Pageable pageable;
+                    Page<Review> pagedReview;
+                    Optional<List<Review>> elements = reviewRepository.
+                            findAllByIsVerifiedIsTrueAndReportIsNullAndProduct_ProductId(
+                                    product.get().getProductId(), Sort.by(Sort.Direction.DESC, "dateCreated"));
+                    UUID reviewIdUUID =  UUID.fromString(reviewId);
 
-                Pageable pageable;
-                Page<Review> pagedReview;
-                if (reviewSortBy.equals("votes")) {
-                    pageable = PageRequest.of(reviewPageNum - 1, 5);
-                    pagedReview = reviewService.getReviewsByProductIdSortByVotes(product.get().getProductId(), sortDirection.toString(), pageable);
+                    if (!elements.isEmpty()) {
+                        long index = 0;
+                        boolean foundReview = false;
+                        for (Review review : elements.get()) {
+                            if (review.getId().equals(reviewIdUUID)) {
+                                foundReview = true;
+                                break;
+                            }
+                            index++;
+                        }
+                        if (foundReview) {
+                            int pageIndex = (int) (((index -1) / 5 ) + 1);
+                            pageable = PageRequest.of(pageIndex - 1, 5, Sort.by(Sort.Direction.DESC, "dateCreated"));
+
+                            pagedReview = reviewService.getReviewsByProductId(product.get().getProductId(), pageable);
+                            productDTO.setCurrentReviewPage(pageIndex);
+                            productDTO.setTotalReviewPage(pagedReview.getTotalPages());
+
+                            List<ReviewDTO> reviewDTOS = reviewService.mapToReviewDTO(pagedReview.getContent());
+                            productDTO.setReviews(reviewDTOS);
+                        } else {
+                            throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find review position!");
+                        }
+                    } else {
+                        throw new WeviewAPIException(HttpStatus.BAD_REQUEST, "Cannot find review position!");
+                    }
+
                 } else {
-                    pageable = PageRequest.of(reviewPageNum - 1, 5, sortDirection, reviewSortBy);
-                    pagedReview = reviewService.getReviewsByProductId(product.get().getProductId(), pageable);
+                    // No specific review location
+                    Sort.Direction sortDirection = Sort.Direction.ASC;
+
+                    if(reviewDirection.equalsIgnoreCase("desc")) {
+                        sortDirection = Sort.Direction.DESC;
+                    }
+
+                    Pageable pageable;
+                    Page<Review> pagedReview;
+                    if (reviewSortBy.equals("votes")) {
+                        pageable = PageRequest.of(reviewPageNum - 1, 5);
+                        pagedReview = reviewService.getReviewsByProductIdSortByVotes(product.get().getProductId(), sortDirection.toString(), pageable);
+                    } else {
+                        pageable = PageRequest.of(reviewPageNum - 1, 5, sortDirection, reviewSortBy);
+                        pagedReview = reviewService.getReviewsByProductId(product.get().getProductId(), pageable);
+                    }
+
+                    productDTO.setTotalReviewPage(pagedReview.getTotalPages());
+
+                    List<ReviewDTO> reviewDTOS = reviewService.mapToReviewDTO(pagedReview.getContent());
+                    productDTO.setReviews(reviewDTOS);
                 }
 
-                productDTO.setTotalReviewPage(pagedReview.getTotalPages());
 
-                List<ReviewDTO> reviewDTOS = reviewService.mapToReviewDTO(pagedReview.getContent());
-                productDTO.setReviews(reviewDTOS);
-
-                // Get all reviews first
+                // Get all reviews for calculations
                 List<Review> list = reviewService.getAllReviewsByProductId(product.get().getProductId());
                 if (!list.isEmpty()) {
                     productDTO.setRatingCount(list.size());
@@ -400,13 +518,19 @@ public class ProductController {
                 }
             }
 
-        // Get current unverified review
-        Optional<Review> unverifiedReview = reviewService.getUnverifiedOrReportedReview(
+        if (userService.getCurrentUser() != null) {
+            // Only perform these methods if logged in
+            productDTO.setWatchlisted(watchlistService.getIsWatchlisted(product.get()));
+
+            // Get current unverified review
+            Optional<Review> unverifiedReview = reviewService.getUnverifiedOrReportedReview(
                     userService.getCurrentUser().getId(), product.get().getProductId());
 
             if (unverifiedReview.isPresent()) {
                 productDTO.setUnverifiedReview(reviewService.mapToReviewDTO(List.of(unverifiedReview.get())).get(0));
             }
+        }
+
         return new ResponseEntity<>(productDTO, HttpStatus.OK);
     }
 

@@ -7,6 +7,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface RewardCodeRepository extends JpaRepository<RewardCode, UUID> {
-    Optional<RewardCode> findFirstByUserIdIsNull();
-    Integer countByRewardIdAndUserIdIsNull(UUID id);
+    Optional<RewardCode> findFirstByRewardIdAndUserIdIsNull(UUID id);
+    Integer countByRewardIdAndUser_IdIsNull(UUID id);
 }

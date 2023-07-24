@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
 import org.weviewapp.entity.*;
 import org.weviewapp.enums.ProductCategory;
 import org.weviewapp.repository.*;
+import org.weviewapp.service.ReviewService;
 import org.weviewapp.utils.EncryptionUtil;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Year;
@@ -30,6 +32,10 @@ public class InitDatabase implements CommandLineRunner {
     RewardRepository rewardRepository;
     @Autowired
     ReportReasonRepository reportReasonRepository;
+    @Autowired
+    ReviewService reviewService;
+    @Autowired
+    ReviewRepository reviewRepository;
     @Autowired
     private EncryptionUtil encryptionUtil;
     @Override
@@ -94,7 +100,7 @@ public class InitDatabase implements CommandLineRunner {
                         case COMPUTERS -> {
                             List<String> computerImage = new ArrayList<>();
                             computerImage.add("PRODUCT_IMG_f60dcc58-3230-442d-933c-67854bfbb061.png");
-                            computerImage.add("PRODUCT_IMG_3132d2f2-be5e-42b5-b6c5-36fd5bb60bc2.png");
+                            computerImage.add("PRODUCT_IMG_0973d924-d55c-45e7-9335-57773f6a8cd0.jpg");
                             computerImage.add("PRODUCT_IMG_c1c0dc33-13f0-4ccf-89cf-cf04a85662f1.png");
 
                             newImage.setImageDirectory(computerImage.get(random.nextInt(computerImage.size())));
@@ -103,15 +109,15 @@ public class InitDatabase implements CommandLineRunner {
                         case SMARTPHONES -> {
                             List<String> smartphoneImage = new ArrayList<>();
                             smartphoneImage.add("PRODUCT_IMG_86b37a2d-5f27-4df9-a73c-92ebe4146a71.png");
-                            smartphoneImage.add("PRODUCT_IMG_ab471e8c-c1f9-4baf-963a-3d1d4e386278.png");
-                            smartphoneImage.add("PRODUCT_IMG_c00a724f-7fbc-4a65-a762-8a4d93e011dd.png");
+                            smartphoneImage.add("PRODUCT_IMG_21224d46-de75-48a2-acec-5aa1238c7a44.jpg");
+                            smartphoneImage.add("PRODUCT_IMG_3166aecd-cafc-4069-899b-d1c300e234a3.jpg");
 
                             newImage.setImageDirectory(smartphoneImage.get(random.nextInt(smartphoneImage.size())));
                             p.getImages().add(newImage);
                         }
                         case HOMEAPPLIANCES -> {
                             List<String> homeImage = new ArrayList<>();
-                            homeImage.add("PRODUCT_IMG_d6f6470d-d106-4625-aaeb-86b3e528582c.png");
+                            homeImage.add("PRODUCT_IMG_78772259-4d4f-4d50-af06-cc97e8e19501.jpg");
                             homeImage.add("PRODUCT_IMG_0520b7ad-8c1a-4620-a69a-406b496786a6.png");
                             homeImage.add("PRODUCT_IMG_53f4ed65-80af-4e6d-be8d-908acd7f22cb.png");
 
@@ -212,18 +218,20 @@ public class InitDatabase implements CommandLineRunner {
             }
         }
 
-        private Review createReview(Product p, User u) {
+        private Review createReview(Product p, User u) throws IOException {
             Random random = new Random();
 
+            Review review = reviewService.getRandomReview();
             Review r = new Review();
             r.setId(UUID.randomUUID());
-            r.setTitle("Lorem Ipsum");
-            r.setDescription("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque sodales magna at enim posuere condimentum. Curabitur aliquet aliquet tellus a aliquet. Aenean scelerisque lectus consectetur ante pretium, eu tincidunt ante feugiat. Cras porta eget dolor sed porta. Ut tempus magna at neque vulputate, nec interdum neque convallis. Donec eget elementum felis, non hendrerit sem. Maecenas semper, ipsum id venenatis porta, felis sapien interdum nulla, et vulputate odio justo sit amet lorem.");
+            r.setTitle(review.getTitle());
+            r.setDescription(review.getDescription());
             r.setProduct(p);
             r.setPrice(BigDecimal.valueOf(random.nextDouble(1000)));
-            r.setRating(random.nextInt(2, 6));
+            r.setRating(review.getRating());
             r.setUser(u);
             r.setVerified(true);
+            r.setSentimentScore(review.getSentimentScore());
 
             int minDay = (int) LocalDate.of(2020, 1, 1).toEpochDay();
             int maxDay = (int) LocalDate.of(2023, 1, 1).toEpochDay();
